@@ -1,0 +1,16 @@
+name: guarded-search
+include:
+  src
+depend:
+  cubical-mini
+  guarded
+flags:
+  --erased-cubical
+  --erasure
+  --erased-matches
+  --guardedness
+  --no-import-sorts
+  --postfix-projections
+  --hidden-argument-puns
+
+  -WnoUnsupportedIndexedMatch
