@@ -1,4 +1,4 @@
-module Absint where
+module Absint1 where
 
 open import Prelude
 open import Data.Empty
