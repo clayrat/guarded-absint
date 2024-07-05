@@ -46,7 +46,7 @@ data Assert : 𝒰 where
 {- computation of the property associated to an assertion -}
 ia : (String → List ℕ → 𝒰) → (String → ℕ) → Assert → 𝒰
 ia m g (QPred s l)   = m s (map (af g) l)
-ia m g (QB b)        = is-true (bf g b) 
+ia m g (QB b)        = is-true (bf g b)
 ia m g (QConj a₁ a₂) = ia m g a₁ × ia m g a₂
 ia m g (QNot a)      = ¬ (ia m g a)
 ia m g  QTrue        = ⊤
@@ -74,7 +74,7 @@ data AnInstr : 𝒰 where
 
 asubst : String → AExpr → AExpr → AExpr
 asubst x s e@(ANum _)      = e
-asubst x s e@(AVar y)      = if x =ₛ y then s else e
+asubst x s e@(AVar y)      = if ⌊ x ≟ y ⌋ then s else e
 asubst x s   (APlus e₁ e₂) = APlus (asubst x s e₁) (asubst x s e₂)
 
 bsubst : String → AExpr → BExpr → BExpr
@@ -108,7 +108,7 @@ vc : AnInstr → Assert → List Cond
 vc (AnPre a i)     post = imp a (pc i post) ∷ vc i post
 vc (AnAssign _ _)  _    = []
 vc (AnSeq i₁ i₂)   post = vc i₁ (pc i₂ post) ++ vc i₂ post
-vc (AnWhile b a i) post = imp (QConj a (QB b)) (pc i a) ∷ imp (QConj a (QNot (QB b))) post ∷ vc i a 
+vc (AnWhile b a i) post = imp (QConj a (QB b)) (pc i a) ∷ imp (QConj a (QNot (QB b))) post ∷ vc i a
 
 valid : (String → List ℕ → 𝒰) → List Cond → 𝒰
 valid m []      = ⊤
@@ -122,31 +122,33 @@ valid-prop m (h ∷ l) mpr = ×-is-of-hlevel 1 (Π-is-of-hlevel 1 λ g → fun-i
                                             (valid-prop m l mpr)
 
 {- A monotonicity property -}
-          
+
 subst-sound-a : {g : String → ℕ} {e' : AExpr} {x : String}
               → (e : AExpr)
-              → af g (asubst x e' e) ＝ af (λ y → if x =ₛ y then af g e' else g y) e
-subst-sound-a     (ANum n) = refl
-subst-sound-a {x} (AVar y) with x =ₛ y
-... | false = refl
-... | true = refl
-subst-sound-a     (APlus e₁ e₂) =
+              → af g (asubst x e' e) ＝ af (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y) e
+subst-sound-a     (ANum n)               = refl
+subst-sound-a {g} {e'} {x} (AVar y)      =
+  elimᵈ {C = λ q → af g (if ⌊ q ⌋ then e' else AVar y) ＝ (if ⌊ q ⌋ then af g e' else g y)}
+        (λ _ → refl)
+        (λ _ → refl)
+        (x ≟ y)
+subst-sound-a     (APlus e₁ e₂)          =
   ap² _+_ (subst-sound-a e₁) (subst-sound-a e₂)
 
 subst-sound-b : {g : String → ℕ} {e' : AExpr} {x : String}
               → (b : BExpr)
-              → bf g (bsubst x e' b) ＝ bf (λ y → if x =ₛ y then af g e' else g y) b
+              → bf g (bsubst x e' b) ＝ bf (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y) b
 subst-sound-b (BLt e₁ e₂) = ap² _≤ᵇ_ (subst-sound-a e₁) (subst-sound-a e₂)
 
 subst-sound-l : {g : String → ℕ} {e' : AExpr} {x : String}
               → (l : List AExpr)
-              → map (af g) (map (asubst x e') l) ＝ map (af (λ y → if x =ₛ y then af g e' else g y)) l
+              → map (af g) (map (asubst x e') l) ＝ map (af (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y)) l
 subst-sound-l []      = refl
 subst-sound-l (h ∷ t) = ap² _∷_ (subst-sound-a h) (subst-sound-l t)
 
 subst-sound : {m : String → List ℕ → 𝒰} {g : String → ℕ} {e' : AExpr} {x : String}
             → (a : Assert)
-            → ia m g (xsubst x e' a) ＝ ia m (λ y → if x =ₛ y then af g e' else g y) a
+            → ia m g (xsubst x e' a) ＝ ia m (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y) a
 subst-sound {m} (QPred s l)   = ap (m s) (subst-sound-l l)
 subst-sound     (QB b)        = ap is-true (subst-sound-b b)
 subst-sound     (QConj a₁ a₂) = ap² _×_ (subst-sound a₁) (subst-sound a₂)
@@ -155,16 +157,16 @@ subst-sound      QTrue        = refl
 subst-sound      QFalse       = refl
 
 {- can be combined into a ≃ lemma -}
-valid-cat : ∀ {m l2} (l1 : List Cond) 
+valid-cat : ∀ {m l2} (l1 : List Cond)
           → valid m l1 → valid m l2 → valid m (l1 ++ l2)
 valid-cat []             v1  v2 = v2
 valid-cat (x ∷ l1) (vx , v1) v2 = vx , valid-cat l1 v1 v2
 
-valid-cat-decompose : ∀ {m l2} (l1 : List Cond) 
+valid-cat-decompose : ∀ {m l2} (l1 : List Cond)
                     → valid m (l1 ++ l2) → valid m l1 × valid m l2
 valid-cat-decompose []       vc        = tt , vc
 valid-cat-decompose (x ∷ l1) (vx , vc) =
-  let vv = valid-cat-decompose l1 vc in 
+  let vv = valid-cat-decompose l1 vc in
   (vx , vv .fst) , vv .snd
 
 vc-monotonic : ∀ {m p1 p2} {p12 : ∀ g → ia m g p1 → ia m g p2} (i : AnInstr)
@@ -174,11 +176,11 @@ vc-monotonic           {p12} (AnPre a i)    (v12 , vc)       =
   let qq = vc-monotonic {p12 = p12} i vc in
   ((λ g x → qq .snd g (v12 g x)) , qq .fst) , λ g → id
 vc-monotonic {p1} {p2} {p12} (AnAssign x e)  tt              =
-  tt , λ g z → transport (subst-sound p2 ⁻¹) (p12 (λ y → if x =ₛ y then af g e else g y) (transport (subst-sound p1) z))
+  tt , λ g z → transport (subst-sound p2 ⁻¹) (p12 (λ y → if ⌊ x ≟ y ⌋ then af g e else g y) (transport (subst-sound p1) z))
 vc-monotonic {p1} {p2} {p12} (AnSeq i₁ i₂)   v               =
   let v12 = valid-cat-decompose (vc i₁ (pc i₂ p1)) v
       ih2 = vc-monotonic {p12 = p12} i₂ (v12 .snd)
-      ih1 = vc-monotonic {p1 = pc i₂ p1} {p12 = ih2 .snd} i₁ (v12 .fst) 
+      ih1 = vc-monotonic {p1 = pc i₂ p1} {p12 = ih2 .snd} i₁ (v12 .fst)
     in
   valid-cat (vc i₁ (pc i₂ p2)) (ih1 .fst) (ih2 .fst) , ih1 .snd
 vc-monotonic           {p12} (AnWhile b a i) (v12 , vn , vc) =
