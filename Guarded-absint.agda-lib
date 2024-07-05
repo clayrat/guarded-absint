@@ -1,4 +1,4 @@
-name: guarded-search
+name: guarded-absint
 include:
   src
 depend:
