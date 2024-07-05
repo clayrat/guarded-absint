@@ -70,6 +70,12 @@ data AnInstr : 𝒰 where
   AnSeq    : AnInstr → AnInstr → AnInstr
   AnWhile  : BExpr → Assert → AnInstr → AnInstr
 
+cleanup : AnInstr → Instr
+cleanup (AnPre _ i)     = cleanup i
+cleanup (AnAssign x e)  = Assign x e
+cleanup (AnSeq i₁ i₂)   = Seq (cleanup i₁) (cleanup i₂)
+cleanup (AnWhile b a i) = While b (cleanup i)
+
 {- computation of the pre-condition for an annotated instruction and a post-condition -}
 
 asubst : String → AExpr → AExpr → AExpr
@@ -162,32 +168,26 @@ valid-cat : ∀ {m l2} (l1 : List Cond)
 valid-cat []             v1  v2 = v2
 valid-cat (x ∷ l1) (vx , v1) v2 = vx , valid-cat l1 v1 v2
 
-valid-cat-decompose : ∀ {m l2} (l1 : List Cond)
+valid-cat-inv : ∀ {m l2} (l1 : List Cond)
                     → valid m (l1 ++ l2) → valid m l1 × valid m l2
-valid-cat-decompose []       vc        = tt , vc
-valid-cat-decompose (x ∷ l1) (vx , vc) =
-  let vv = valid-cat-decompose l1 vc in
-  (vx , vv .fst) , vv .snd
+valid-cat-inv []       vc        = tt , vc
+valid-cat-inv (x ∷ l1) (vx , vc) =
+  let ih = valid-cat-inv l1 vc in
+  (vx , ih .fst) , ih .snd
 
-vc-monotonic : ∀ {m p1 p2} {p12 : ∀ g → ia m g p1 → ia m g p2} (i : AnInstr)
+vc-monotonic : ∀ {m p1 p2} → (∀ g → ia m g p1 → ia m g p2) → (i : AnInstr)
              → valid m (vc i p1)
              → valid m (vc i p2) × (∀ g → ia m g (pc i p1) → ia m g (pc i p2))
-vc-monotonic           {p12} (AnPre a i)    (v12 , vc)       =
-  let qq = vc-monotonic {p12 = p12} i vc in
-  ((λ g x → qq .snd g (v12 g x)) , qq .fst) , λ g → id
-vc-monotonic {p1} {p2} {p12} (AnAssign x e)  tt              =
+vc-monotonic           p12 (AnPre a i)    (v12 , vc)       =
+  let ih = vc-monotonic p12 i vc in
+  ((λ g x → ih .snd g (v12 g x)) , ih .fst) , λ g → id
+vc-monotonic {p1} {p2} p12 (AnAssign x e)  tt              =
   tt , λ g z → transport (subst-sound p2 ⁻¹) (p12 (λ y → if ⌊ x ≟ y ⌋ then af g e else g y) (transport (subst-sound p1) z))
-vc-monotonic {p1} {p2} {p12} (AnSeq i₁ i₂)   v               =
-  let v12 = valid-cat-decompose (vc i₁ (pc i₂ p1)) v
-      ih2 = vc-monotonic {p12 = p12} i₂ (v12 .snd)
-      ih1 = vc-monotonic {p1 = pc i₂ p1} {p12 = ih2 .snd} i₁ (v12 .fst)
+vc-monotonic {p1} {p2} p12 (AnSeq i₁ i₂)   v               =
+  let v12 = valid-cat-inv (vc i₁ (pc i₂ p1)) v
+      ih2 = vc-monotonic p12 i₂ (v12 .snd)
+      ih1 = vc-monotonic {p1 = pc i₂ p1} (ih2 .snd) i₁ (v12 .fst)
     in
   valid-cat (vc i₁ (pc i₂ p2)) (ih1 .fst) (ih2 .fst) , ih1 .snd
-vc-monotonic           {p12} (AnWhile b a i) (v12 , vn , vc) =
+vc-monotonic           p12 (AnWhile b a i) (v12 , vn , vc) =
   (v12 , (λ g → p12 g ∘ vn g) , vc) , λ g → id
-
-cleanup : AnInstr → Instr
-cleanup (AnPre _ i)     = cleanup i
-cleanup (AnAssign x e)  = Assign x e
-cleanup (AnSeq i₁ i₂)   = Seq (cleanup i₁) (cleanup i₂)
-cleanup (AnWhile b a i) = While b (cleanup i)
