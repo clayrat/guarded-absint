@@ -22,6 +22,14 @@ mem-transpose {z} {x} {y} {l'} []      = or-assoc ⌊ x ≟ z ⌋ ⌊ y ≟ z �
                                        ∙ or-assoc ⌊ y ≟ z ⌋ ⌊ x ≟ z ⌋ (mem z l')
 mem-transpose {z}              (h ∷ t) = ap (⌊ h ≟ z ⌋ or_) (mem-transpose t)
 
+mem-more : ∀ {l x a} → is-true (not (mem x (a ∷ l))) → is-true (not (mem x l))
+mem-more {l} {x} {a} nm =
+  is-true-≃ ⁻¹ $ (and-true-≃ {x = not ⌊ a ≟ x ⌋} {y = not (mem x l)} $
+                 is-true-≃ $ subst is-true (not-or ⌊ a ≟ x ⌋ (mem x l)) nm) .snd
+
+--mem-more     []      nm = tt
+--mem-more {x} (y ∷ l) nm = {!!}
+
 St : 𝒰 → 𝒰
 St A = List (String × A)
 
@@ -86,3 +94,14 @@ module State
 
   consistent-update : ∀ {s x v} → consistent s → consistent (stupd x v s)
   consistent-update {s} = no-dups-update s tt
+
+  no-dups-more-excluded : ∀ {l a} s → is-true (no-dups s (a ∷ l)) → is-true (no-dups s l)
+  no-dups-more-excluded         []            h = tt
+  no-dups-more-excluded {l} {a} ((x , v) ∷ s) h =
+    let hh = and-true-≃ {x = not (⌊ a ≟ x ⌋ or mem x l)} {y = no-dups s (x ∷ a ∷ l)} $ is-true-≃ $ h in
+    is-true-≃ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} ⁻¹ $
+      (and-true-≃ {x = not ⌊ a ≟ x ⌋} {y = not (mem x l)} $ subst is-trueₚ (not-or ⌊ a ≟ x ⌋ (mem x l)) (hh .fst)) .snd
+    , (is-true-≃ $ no-dups-more-excluded s (is-true-≃ ⁻¹ $ subst is-trueₚ (no-dups-transpose-head {s = s}) (hh .snd)))
+
+  consistent-tail : ∀ {s a} → consistent (a ∷ s) → consistent s
+  consistent-tail {s} = no-dups-more-excluded s

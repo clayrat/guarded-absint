@@ -16,22 +16,9 @@ open import Data.Sum
 open import Lang
 open import State
 
--- TODO merge with AbsInt1
-
-module StateA
-  (A : 𝒰)
-  (top : A)
-  (add : A → A → A)
-  (fromN : ℕ → A)
-
-  where
-
-  open State.State A top
-
-  a-af : State → AExpr → A
-  a-af s (ANum n)      = fromN n
-  a-af s (AVar x)      = stlup s x
-  a-af s (APlus e₁ e₂) = add (a-af s e₁) (a-af s e₂)
+-- TODO better decoupling
+-- we need s→a, a-af, lookup-sem from Absint1
+open import Absint1
 
 module AInt2
   (A : 𝒰)
@@ -50,13 +37,7 @@ module AInt2
   where
 
   open State.State A top
-  open StateA A top add fromN
-
-  -- TODO duplication
-
-  s→a : State → Assert
-  s→a []            = QTrue
-  s→a ((x , a) ∷ t) = QConj (to-pred a (AVar x)) (s→a t)
+  open AInt A top fromN add to-pred
 
   s→a' : Maybe State → Assert
   s→a' (just s) = s→a s
@@ -117,6 +98,95 @@ module AInt2
   ab2 (While b i)  s = let inv = find-inv (ab2 i) b s s i (choose-2 s i) in
                        (AnWhile b (s→a inv) (do-annot (ab2 i) b inv i)) , (learn-from-failure inv b)
 
+module AInt2Sem
+  (A : 𝒰)
+  (top : A)
+  (add : A → A → A)
+  (fromN : ℕ → A)
+  (to-pred : A → AExpr → Assert)
+  (learn-from-success : St A → BExpr → Maybe (St A))
+  (learn-from-failure : St A → BExpr → Maybe (St A))
+  (join : A → A → A)
+  (thinner : A → A → Bool)
+  (over-approx : ℕ → St A → St A → St A)
+  (choose-1 : St A → Instr → ℕ)
+  (choose-2 : St A → Instr → ℕ)
+
+  (m : String → List ℕ → 𝒰)
+
+  (top-sem : ∀ e → to-pred top e ＝ QTrue)
+  (subst-to-pred : ∀ v x e e' → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
+  (fromN-sem : ∀ g x → ia m g (to-pred (fromN x) (ANum x)))
+  (to-pred-sem : ∀ g v e → ia m g (to-pred v e) ＝ ia m g (to-pred v (ANum (af g e))))
+  (a-add-sem : ∀ g v1 v2 x1 x2
+            → ia m g (to-pred v1 (ANum x1))
+            → ia m g (to-pred v2 (ANum x2))
+            → ia m g (to-pred (add v1 v2) (ANum (x1 + x2))))
+  (learn-from-success-sem : ∀ s b g (s→a : St A → Assert) (s→a' : Maybe (St A) → Assert) (consistent : St A → 𝒰)
+                          → consistent s
+                          → ia m g (s→a s) → ia m g (QB b)
+                          → ia m g (s→a' (learn-from-success s b)))
+  (learn-from-failure-sem : ∀ s b g (s→a : St A → Assert) (s→a' : Maybe (St A) → Assert) (consistent : St A → 𝒰)
+                          → consistent s
+                          → ia m g (s→a s) → ¬ ia m g (QB b)
+                          → ia m g (s→a' (learn-from-failure s b)))
+  (over-approx-sem : ∀ g n s s' (s→a : St A → Assert)
+                   → ia m g (s→a s)
+                   → ia m g (s→a (over-approx n s s')))
+  (join-thinner-1 : ∀ a b → is-true (thinner a (join a b)))
+  (join-thinner-2 : ∀ a b → is-true (thinner b (join a b)))
+  (thinner-sem : ∀ a1 a2 → is-true (thinner a1 a2)
+               → ∀ g e → ia m g (to-pred a1 e) → ia m g (to-pred a2 e))
+  (over-approx-consistent : ∀ n s s' (consistent : St A → 𝒰)
+                          → consistent s → consistent s'
+                          → consistent (over-approx n s s'))
+  (learn_from_success_consistent : ∀ s b s' (consistent : St A → 𝒰)
+                                 → consistent s
+                                 → learn-from-success s b ＝ just s'
+                                 → consistent s')
+  (learn_from_failure_consistent : ∀ s b s' (consistent : St A → 𝒰)
+                                 → consistent s
+                                 → learn-from-failure s b ＝ just s'
+                                 → consistent s')
+  where
+
+  open State.State A top
+  open AInt2 A top add fromN to-pred learn-from-success learn-from-failure join thinner over-approx choose-1 choose-2
+  open AInt A top fromN add to-pred
+  open AIntSem A top fromN add to-pred m top-sem subst-to-pred fromN-sem to-pred-sem a-add-sem
+
+  join-safe-1 : ∀ {g a b x} → ia m g (to-pred a x) → ia m g (to-pred (join a b) x)
+  join-safe-1 {g} {a} {b} {x} iax = thinner-sem a (join a b) (join-thinner-1 a b) g x iax
+
+  join-safe-2 : ∀ {g a b x} → ia m g (to-pred b x) → ia m g (to-pred (join a b) x)
+  join-safe-2 {g} {a} {b} {x} iax = thinner-sem b (join a b) (join-thinner-2 a b) g x iax
+
+  upd-x : ∀ {g x e} s → ia m g (s→a (stupd x e s)) → ia m g (to-pred e (AVar x))
+  upd-x             []            (iax , tt) = iax
+  upd-x {g} {x} {e} ((y , v) ∷ s)            =
+    elimᵈ {C = λ q → ia m g (s→a (if ⌊ q ⌋ then (y , e) ∷ s else (y , v) ∷ stupd x e s)) → ia m g (to-pred e (AVar x))}
+          (λ p iax → subst (λ q → ia m g (to-pred e (AVar q))) (p ⁻¹) (iax .fst))
+          (λ _ iax → upd-x s (iax .snd))
+          (x ≟ y)
+
+  upd-others : ∀ {g x e} s → ia m g (s→a (stupd x e s))
+             → ∀ {y} → x ≠ y → ia m g (to-pred (stlup s y) (AVar y))
+  upd-others {g}     {e} []            (iax , tt) {y} ne =
+    subst (ia m g) (top-sem (AVar y) ⁻¹) tt
+  upd-others {g} {x} {e} ((z , v) ∷ s)                   =
+    elimᵈ {C = λ q → ia m g (s→a (if ⌊ q ⌋ then (z , e) ∷ s else (z , v) ∷ stupd x e s))
+                   → {y : String} → x ≠ y
+                   → ia m g (to-pred (if ⌊ y ≟ z ⌋ then v else stlup s y) (AVar y))}
+          (λ p  iax {y} ne → elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))}
+                                   (λ eq → absurd (ne (p ∙ eq ⁻¹)))
+                                   (λ _  → transport (to-pred-sem g (stlup s y) (AVar y) ⁻¹) (lookup-sem s (iax .snd)))
+                                   (y ≟ z) )
+          (λ ¬p iax {y} ne → elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))}
+                                   (λ eq → subst (λ q → ia m g (to-pred v (AVar q))) (eq ⁻¹) (iax .fst))
+                                   (λ _  → upd-others s (iax .snd) ne)
+                                   (y ≟ z) )
+          (x ≟ z)
+
 -- testing
 
 data Interval : 𝒰 where
@@ -138,8 +208,15 @@ i-add (Between _ y) (Below z)     = Below (y + z)
 i-add (Between x y) (Between z w) = Between (x + z) (y + w)
 i-add _             _             = AllN
 
-open module OEState = State.State Interval AllN
-open module OEInt = StateA Interval AllN i-add i-fromN
+i-to-pred : Interval → AExpr → Assert
+i-to-pred (Above x)     e = QPred "leq" (ANum x ∷ e ∷ [])
+i-to-pred (Below x)     e = QPred "leq" (e ∷ ANum x ∷ [])
+i-to-pred (Between x y) e = QConj (QPred "leq" (ANum x ∷ e ∷ []))
+                                  (QPred "leq" (e ∷ ANum y ∷ []))
+i-to-pred  AllN         _ = QTrue
+
+open module IState = State.State Interval AllN
+open module IInt = AInt Interval AllN i-fromN i-add i-to-pred
 
 -- TODO upstream
 
@@ -193,13 +270,6 @@ i-learn-from-failure : State → BExpr → Maybe State
 i-learn-from-failure s (BLt (AVar n) e) = i-learn-from-failure-aux s n (a-af s e) (stlup s n)
 i-learn-from-failure s _                = just s
 
-i-to-pred : Interval → AExpr → Assert
-i-to-pred (Above x)     e = QPred "leq" (ANum x ∷ e ∷ [])
-i-to-pred (Below x)     e = QPred "leq" (e ∷ ANum x ∷ [])
-i-to-pred (Between x y) e = QConj (QPred "leq" (ANum x ∷ e ∷ []))
-                                  (QPred "leq" (e ∷ ANum y ∷ []))
-i-to-pred  AllN         _ = QTrue
-
 i-join : Interval → Interval → Interval
 i-join (Above x)     (Above y)     = Above (minᵇ x y)
 i-join (Above x)     (Between y _) = Above (minᵇ x y)
@@ -242,7 +312,10 @@ i-choose-1 _ _ = 2
 i-choose-2 : State → Instr → ℕ
 i-choose-2 _ _ = 3
 
-open module IntervalInt = AInt2 Interval AllN i-add i-fromN i-to-pred i-learn-from-success i-learn-from-failure i-join i-thinner i-over-approx i-choose-1 i-choose-2
+open module IntervalInt = AInt2 Interval AllN i-add i-fromN i-to-pred
+                            i-learn-from-success i-learn-from-failure
+                            i-join i-thinner i-over-approx
+                            i-choose-1 i-choose-2
 
 i-1 : Instr
 i-1 = While (BLt (AVar "x") (ANum 10))
