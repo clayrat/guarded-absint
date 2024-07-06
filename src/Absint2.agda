@@ -36,6 +36,9 @@ module StateA
 module AInt2
   (A : 𝒰)
   (top : A)
+  (add : A → A → A)
+  (fromN : ℕ → A)
+  (to-pred : A → AExpr → Assert)
   (learn-from-success : St A → BExpr → Maybe (St A))
   (learn-from-failure : St A → BExpr → Maybe (St A))
   (join : A → A → A)
@@ -43,10 +46,6 @@ module AInt2
   (over-approx : ℕ → St A → St A → St A)
   (choose-1 : St A → Instr → ℕ)
   (choose-2 : St A → Instr → ℕ)
-
-  (add : A → A → A)
-  (fromN : ℕ → A)
-  (to-pred : A → AExpr → Assert)
 
   where
 
@@ -219,3 +218,104 @@ i-thinner (Between _ y) (Below z)     = y ≤ᵇ z
 i-thinner (Between x y) (Between z w) = (z ≤ᵇ x) and (y ≤ᵇ w)
 i-thinner _              AllN         = true
 i-thinner _              _            = false
+
+open-interval : Interval → Interval → Interval
+open-interval i@(Above x)     (Above y)     = if x ≤ᵇ y then i else AllN
+open-interval i@(Below x)     (Below y)     = if y ≤ᵇ x then i else AllN
+open-interval i@(Between x y) (Between z w) = if x ≤ᵇ z
+                                                  then if w ≤ᵇ y then i else Above x
+                                                  else if w ≤ᵇ y then Below y else AllN
+open-interval    _              _            = AllN
+
+open-intervals : State → State → State
+open-intervals s s' = map (λ p → let (n , v) = p in n , open-interval v (stlup s' n)) s
+
+i-over-approx : ℕ → State → State → State
+i-over-approx  zero   s s' = []
+i-over-approx (suc _) s s' = open-intervals s s'
+
+-- TODO prop
+
+i-choose-1 : State → Instr → ℕ
+i-choose-1 _ _ = 2
+
+i-choose-2 : State → Instr → ℕ
+i-choose-2 _ _ = 3
+
+open module IntervalInt = AInt2 Interval AllN i-add i-fromN i-to-pred i-learn-from-success i-learn-from-failure i-join i-thinner i-over-approx i-choose-1 i-choose-2
+
+i-1 : Instr
+i-1 = While (BLt (AVar "x") (ANum 10))
+            (Assign "x" (APlus (AVar "x") (ANum 1)))
+
+s-1 : State
+s-1 = ("x" , i-fromN 0) ∷ []
+
+res-1 : AnInstr × Maybe State
+res-1 =   AnWhile (BLt (AVar "x") (ANum 10))
+                  (QConj
+                    (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                           (QPred "leq" (AVar "x" ∷ ANum 10 ∷ [])))
+                    QTrue)
+                  (AnPre (QConj
+                           (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                                  (QPred "leq" (AVar "x" ∷ ANum 9 ∷ [])))
+                           QTrue)
+                         (AnAssign "x" (APlus (AVar "x") (ANum 1))))
+        , just (("x" , Between 10 10) ∷ [])
+
+test-1 : ab2 i-1 s-1 ＝ res-1
+test-1 = refl
+
+i-3 : Instr
+i-3 = While (BLt (AVar "x") (ANum 10))
+            (Seq (While (BLt (AVar "y") (AVar "x"))
+                        (Assign "y" (APlus (AVar "y") (ANum 1))))
+            (Seq (Assign "y" (ANum 0))
+                 (Assign "x" (APlus (AVar "x") (ANum 1)))))
+
+s-3 : State
+s-3 = ("x" , i-fromN 0) ∷ ("y" , i-fromN 0) ∷ []
+
+res-3 : AnInstr × Maybe State
+res-3 =   AnWhile (BLt (AVar "x") (ANum 10))
+                  (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "y" ∷ []))
+                                (QPred "leq" (AVar "y" ∷ ANum 0 ∷ [])))
+                  (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                                (QPred "leq" (AVar "x" ∷ ANum 10 ∷ [])))
+                   QTrue))
+                  (AnSeq (AnWhile (BLt (AVar "y") (AVar "x"))
+                                  (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                                                (QPred "leq" (AVar "x" ∷ ANum 9 ∷ [])))
+                                  (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "y" ∷ []))
+                                                (QPred "leq" (AVar "y" ∷ ANum 9 ∷ [])))
+                                   QTrue))
+                                  (AnPre (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                                                       (QPred "leq" (AVar "x" ∷ ANum 9 ∷ [])))
+                                         (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "y" ∷ []))
+                                                       (QPred "leq" (AVar "y" ∷ ANum 8 ∷ [])))
+                                          QTrue))
+                                         (AnAssign "y" (APlus (AVar "y") (ANum 1)))))
+                  (AnSeq (AnPre (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                                              (QPred "leq" (AVar "x" ∷ ANum 9 ∷ [])))
+                                (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "y" ∷ []))
+                                              (QPred "leq" (AVar "y" ∷ ANum 9 ∷ [])))
+                                 QTrue))
+                                (AnAssign "y" (ANum 0)))
+                         (AnPre (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                                              (QPred "leq" (AVar "x" ∷ ANum 9 ∷ [])))
+                                (QConj (QConj (QPred "leq" (ANum 0 ∷ AVar "y" ∷ []))
+                                              (QPred "leq" (AVar "y" ∷ ANum 0 ∷ [])))
+                                 QTrue))
+                                (AnAssign "x" (APlus (AVar "x") (ANum 1))))))
+        , just (("y" , Between 0 0) ∷ ("x" , Between 10 10) ∷ [])
+
+test-3 : ab2 i-3 s-3 ＝ res-3
+test-3 = refl
+
+i-m-aux : List ℕ → 𝒰
+i-m-aux (x ∷ y ∷ []) = x ≤ y
+i-m-aux _            = ⊥
+
+i-m : String → List ℕ → 𝒰
+i-m s l = if s =ₛ "leq" then i-m-aux l else ⊥
