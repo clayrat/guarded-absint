@@ -8,7 +8,7 @@ open import Data.Nat
 open import Data.Nat.Two
 open import Data.Nat.Order.Inductive
 open import Data.String
-open import Data.Maybe renaming (rec to recᵐ)
+open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
 open import Data.List
 open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Sum
@@ -17,7 +17,7 @@ open import Lang
 open import State
 
 -- TODO better decoupling
--- we need s→a, a-af, lookup-sem from Absint1
+-- we need s→a, a-af, lookup-sem, lookup-sem2 from Absint1
 open import Absint1
 
 module AInt2
@@ -186,6 +186,96 @@ module AInt2Sem
                                    (λ _  → upd-others s (iax .snd) ne)
                                    (y ≟ z) )
           (x ≟ z)
+
+  a-upd-ia-all : ∀ {g l x e} s → is-true (no-dups s l)
+               → (∀ {y} → y ≠ x → is-true (not (mem y l))
+                  → ia m g (to-pred (stlup s y) (AVar y)))
+               → ia m g (to-pred e (AVar x))
+               → ia m g (s→a (stupd x e s))
+  a-upd-ia-all []            cs f h = h , tt
+  a-upd-ia-all {g} {l} {x} {e} ((z , v) ∷ s) cs     =
+    elimᵈ {C = λ q → ({y : String} → y ≠ x → is-true (not (mem y l))
+                      → ia m g (to-pred (if ⌊ y ≟ z ⌋ then v else stlup s y) (AVar y)))
+                   → ia m g (to-pred e (AVar x))
+                   → ia m g (s→a (if ⌊ q ⌋ then (z , e) ∷ s else (z , v) ∷ stupd x e s)) }
+          (λ p  ias iax →   (subst (λ q → ia m g (to-pred e (AVar q))) p iax)
+                          , (lookup-sem2 {l = z ∷ l} s
+                             (is-true-≃ ⁻¹ $ (and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true-≃ $ cs) .snd)
+                             λ y h →
+                               let hh = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
+                                        subst is-trueₚ (not-or ⌊ z ≟ y ⌋ (mem y l)) (is-true-≃ $ h) in
+                               elimᵈ {C = λ q → (y ≠ x →
+                                                 is-true (not (mem y l)) →
+                                                 ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
+                                                ia m g (to-pred (stlup s y) (AVar y))}
+                                     (λ e  _ → absurd (elimᵈ {C = λ q → is-trueₚ (not ⌊ q ⌋) → ⊥}
+                                                             (λ _     → false≠true)
+                                                             (λ ¬e′ _ → ¬e′ (e ⁻¹))
+                                                             (z ≟ y) (hh .fst)))
+                                     (λ ¬e f → f (λ p′ → ¬e (p′ ∙ p)) (is-true-≃ ⁻¹ $ hh .snd))
+                                     (y ≟ z)
+                                     (ias {y})))
+          (λ ¬p ias iax → let hh = and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true-≃ $ cs in
+                            elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s z) (AVar z))
+                                           → ia m g (to-pred v (AVar z))}
+                                  (λ _  → id)
+                                  (λ ¬c → absurd (¬c refl))
+                                  (z ≟ z)
+                                  (ias (λ w → ¬p (w ⁻¹)) (is-true-≃ ⁻¹ $ hh .fst))
+                          , a-upd-ia-all {l = z ∷ l} s (is-true-≃ ⁻¹ $ hh .snd)
+                               (λ {y} ne h → let h′ = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
+                                                      is-true-≃ $ subst is-true (not-or ⌊ z ≟ y ⌋ (mem y l)) h in
+                                             elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))
+                                                            → ia m g (to-pred (stlup s y) (AVar y))}
+                                                   (λ yz → absurd (elimᵈ {C = λ q → is-trueₚ (not ⌊ q ⌋) → ⊥}
+                                                                         (λ _ → false≠true) (λ ¬e′ _ → ¬e′ (yz ⁻¹))
+                                                                         (z ≟ y) (h′ .fst)))
+                                                   (λ ¬yz → id)
+                                                   (y ≟ z)
+                                                   (ias ne (is-true-≃ ⁻¹ $ h′ .snd)))
+                               iax)
+          (x ≟ z)
+
+  a-upd-ia-all' : ∀ {g s x e} → consistent s
+                → (∀ {y} → y ≠ x → ia m g (to-pred (stlup s y) (AVar y)))
+                → ia m g (to-pred e (AVar x))
+                → ia m g (s→a (stupd x e s))
+  a-upd-ia-all' {s} cs ias = a-upd-ia-all s cs (λ {y} ne _ → ias ne)
+
+  join-state-consistent : ∀ {s2} s1 → consistent (join-state s1 s2)
+  join-state-consistent      []             = tt
+  join-state-consistent {s2} ((x , v) ∷ s1) = consistent-update {s = join-state s1 s2} (join-state-consistent s1)
+
+  join-state-safe-1 : ∀ {g s2} s1 → ia m g (s→a s1) → ia m g (s→a (join-state s1 s2))
+  join-state-safe-1          []             tt          = tt
+  join-state-safe-1 {g} {s2} ((x , v) ∷ s1) (iax , ias) =
+    a-upd-ia-all' {s = join-state s1 s2}
+      (join-state-consistent s1)
+      (λ {y} ne → transport (to-pred-sem g (stlup (join-state s1 s2) y) (AVar y) ⁻¹)
+                            (lookup-sem (join-state s1 s2) (join-state-safe-1 s1 ias)))
+      (join-safe-1 iax)
+
+  join-state-safe-2 : ∀ {g s2} s1 → ia m g (s→a s2) → ia m g (s→a (join-state s1 s2))
+  join-state-safe-2          []             iax = tt
+  join-state-safe-2 {g} {s2} ((x , v) ∷ s1) iax =
+    a-upd-ia-all' {s = join-state s1 s2}
+      (join-state-consistent s1)
+      (λ {y} ne → transport (to-pred-sem g (stlup (join-state s1 s2) y) (AVar y) ⁻¹)
+                            (lookup-sem (join-state s1 s2) (join-state-safe-2 s1 iax)))
+      (join-safe-2 (transport (to-pred-sem g (stlup s2 x) (AVar x) ⁻¹)
+                              (lookup-sem s2 iax)))
+
+  step1-pc : ∀ {g ab b s s'}
+           → ia m g (s→a s) → ia m g (s→a s')
+           → ia m g (s→a (step1 ab b s s'))
+  step1-pc {g} {ab} {b} {s} {s'} ias ias' =
+    elimᵐ (λ q → ia m g (s→a (recᵐ s' (λ s′ → join-state-m s (ab s′ .snd)) q)))
+          ias'
+          (λ x → elimᵐ (λ q → ia m g (s→a (join-state-m s q)))
+                       ias
+                       (λ y → join-state-safe-1 s ias)
+                       (ab x .snd))
+          (learn-from-success s' b)
 
 -- testing
 
