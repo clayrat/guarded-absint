@@ -13,20 +13,7 @@ open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Sum
 
 open import Lang
-
-  -- membership
-
--- TODO use elem
-mem : String → List String → Bool
-mem s []      = false
-mem s (x ∷ l) = (⌊ x ≟ s ⌋) or mem s l
-
-mem-transpose : ∀ {z x y l'} l
-              → mem z (l ++ x ∷ y ∷ l') ＝ mem z (l ++ y ∷ x ∷ l')
-mem-transpose {z} {x} {y} {l'} []      = or-assoc ⌊ x ≟ z ⌋ ⌊ y ≟ z ⌋ (mem z l') ⁻¹
-                                       ∙ ap (λ q → q or mem z l') (or-comm  ⌊ x ≟ z ⌋ ⌊ y ≟ z ⌋)
-                                       ∙ or-assoc ⌊ y ≟ z ⌋ ⌊ x ≟ z ⌋ (mem z l')
-mem-transpose {z}              (h ∷ t) = ap (⌊ h ≟ z ⌋ or_) (mem-transpose t)
+open import State
 
 module AInt
   (A : 𝒰)
@@ -37,61 +24,7 @@ module AInt
 
   where
 
-  -- state infrastructure
-
-  State : 𝒰
-  State = List (String × A)
-
-  no-dups : State → List String → Bool
-  no-dups []            l = true
-  no-dups ((s , _) ∷ t) l = not (mem s l) and no-dups t (s ∷ l)
-
-  consistent : State → 𝒰
-  consistent s = is-true (no-dups s [])
-
-  consistent-prop : (s : State) → is-prop (consistent s)
-  consistent-prop s = hlevel 1
-
-  consistent-nil : consistent []
-  consistent-nil = tt
-
-  no-dups-transpose : ∀ {l l' x y} s → no-dups s (l ++ x ∷ y ∷ l') ＝ no-dups s (l ++ y ∷ x ∷ l')
-  no-dups-transpose     []            = refl
-  no-dups-transpose {l} ((z , v) ∷ s) = ap² _and_ (ap not (mem-transpose l)) (no-dups-transpose {l = z ∷ l} s)
-
-  no-dups-transpose-head : ∀ {s l x y} → no-dups s (x ∷ y ∷ l) ＝ no-dups s (y ∷ x ∷ l)
-  no-dups-transpose-head {s} = no-dups-transpose {l = []} s
-
-  stlup : State → String → A
-  stlup []            x = top
-  stlup ((y , v) ∷ t) x = if ⌊ x ≟ y ⌋ then v else stlup t x
-
-  stupd : String → A → State → State
-  stupd x v []            = (x , v) ∷ []
-  stupd x v ((y , w) ∷ t) = if ⌊ x ≟ y ⌋ then (y , v) ∷ t else (y , w) ∷ stupd x v t
-
-  no-dups-update : ∀ {l x v} s
-                 → is-true (not (mem x l))
-                 → is-true (no-dups s l)
-                 → is-true (no-dups (stupd x v s) l)
-  no-dups-update {l} {x}     []            h1 h2 = subst is-true (and-id-r (not (mem x l)) ⁻¹) h1
-  no-dups-update {l} {x} {v} ((y , w) ∷ s) h1 h2 =
-    elimᵈ {C = λ q → is-true (no-dups (if ⌊ q ⌋ then (y , v) ∷ s else (y , w) ∷ stupd x v s) l)}
-          (λ p  → h2)
-          (λ ¬p → let h34 = and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true-≃ $ h2 in
-                  is-true-≃ ⁻¹ $
-                  and-true-≃ {x = not (mem y l)} {y = no-dups (stupd x v s) (y ∷ l)} ⁻¹ $
-                  ( h34 .fst
-                  , (is-true-≃ $ no-dups-update s
-                       (elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem x l))}
-                              (λ p′ → ¬p (p′ ⁻¹))
-                              (λ _ → h1)
-                              (y ≟ x))
-                       (is-true-≃ ⁻¹ $ h34 .snd))))
-          (x ≟ y)
-
-  consistent-update : ∀ {s x v} → consistent s → consistent (stupd x v s)
-  consistent-update {s} = no-dups-update s tt
+  open State.State A top
 
   -- abstract interpreter
 
@@ -135,6 +68,7 @@ module AIntSem
             → ia m g (to-pred (add v1 v2) (ANum (x1 + x2))))
   where
 
+  open State.State A top
   open AInt A top fromN add to-pred
 
   lookup-sem : ∀ {g} s → ia m g (s→a s)
@@ -173,8 +107,7 @@ module AIntSem
       subst (ia m g) (subst-to-pred _ _ (AVar _) _ ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar x))}
                                                               (λ _ → transport (to-pred-sem g v e ⁻¹) h3)
                                                               (λ ¬p → absurd (¬p refl))
-                                                              (x ≟ x))
-    , tt
+                                                              (x ≟ x)) , tt
   subst-no-dups {g} {v} {x} {e} {l} ((y , w) ∷ s) h1 (h2 , h3) h4 =
     let h5 = (and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true-≃ $ h1) .snd in
     elimᵈ {C = λ q → ia m g (xsubst x e (s→a (if ⌊ q ⌋ then (y , v) ∷ s else (y , w) ∷ stupd x v s)))}
@@ -257,6 +190,34 @@ module AIntSem
     subst (λ q → cleanup q ＝ While b i) (ap fst h) $
     ap (While b) (ab1-clean i refl)
 
+  lookup-sem2 : ∀ {g l} s
+              → is-true (no-dups s l)
+              → (∀ x → is-true (not (mem x l)) → ia m g (to-pred (stlup s x) (AVar x)))
+              → ia m g (s→a s)
+  lookup-sem2         []            h p = tt
+  lookup-sem2 {g} {l} ((x , v) ∷ s) h p =
+    let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $
+             is-true-≃ $ h in
+      elimᵈ {C = λ q → (is-true (not (mem x l)) →
+                        ia m g (to-pred (if ⌊ q ⌋ then v else stlup s x) (AVar x))) →
+                 ia m g (to-pred v (AVar x)) }
+            (λ _ f → f (is-true-≃ ⁻¹ $ hh .fst))
+            (λ ¬p → absurd (¬p refl))
+            (x ≟ x) (p x)
+    , lookup-sem2 {l = x ∷ l} s (is-true-≃ ⁻¹ $ hh .snd)
+        λ y my → elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem y l)) →
+                                   ia m g (to-pred (stlup s y) (AVar y)) }
+                       (λ hp my′  → absurd my′)
+                       (λ ¬hp my′ → elimᵈ
+                                     {C =
+                                      λ q → (is-true (not (mem y l)) →
+                                             ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
+                                            ia m g (to-pred (stlup s y) (AVar y))}
+                                     (λ ep py  → absurd (¬hp (ep ⁻¹)))
+                                     (λ ¬ep py → py my′)
+                                     (y ≟ x) (p y))
+                       (x ≟ y) my
+
 -- testing
 
 data OE : 𝒰 where
@@ -277,16 +238,17 @@ OE-to-pred Even  e = QPred "even" (e ∷ [])
 OE-to-pred Odd   e = QPred "odd" (e ∷ [])
 OE-to-pred OETop e = QTrue
 
-module OEInt = AInt OE OETop OE-fromN addOE OE-to-pred
+open module OEState = State.State OE OETop
+open module OEInt = AInt OE OETop OE-fromN addOE OE-to-pred
 
 testprog : Instr
 testprog = Seq (Assign "x" (APlus (AVar "x") (AVar "y")))
                (Assign "y" (APlus (AVar "y") (ANum 1)))
 
-testst : OEInt.State
+testst : State
 testst = ("x" , Even) ∷ ("y" , Odd) ∷ []
 
-testres : AnInstr × OEInt.State
+testres : AnInstr × State
 testres = AnSeq (AnPre (QConj (QPred "even" (AVar "x" ∷ []))
                         (QConj (QPred "odd" (AVar "y" ∷ [])) QTrue))
                        (AnAssign "x" (APlus (AVar "x") (AVar "y"))))
@@ -295,7 +257,7 @@ testres = AnSeq (AnPre (QConj (QPred "even" (AVar "x" ∷ []))
                        (AnAssign "y" (APlus (AVar "y") (ANum 1))))
        , ("x" , Odd) ∷ ("y" , Even) ∷ []
 
-testab1 : OEInt.ab1 testprog testst ＝ testres
+testab1 : ab1 testprog testst ＝ testres
 testab1 = refl
 
 OE-top-sem : ∀ e → OE-to-pred OETop e ＝ QTrue
