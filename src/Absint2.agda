@@ -51,11 +51,6 @@ module AInt2
   join-state-m s1 (just s2) = join-state s1 s2
   join-state-m s1  nothing  = s1
 
-  mark : Instr → AnInstr
-  mark (Assign x e) = AnPre QFalse (AnAssign x e)
-  mark (Seq i₁ i₂)  = AnSeq (mark i₁) (mark i₂)
-  mark (While b i)  = AnWhile b QFalse (mark i)
-
   step1 : (State → AnInstr × Maybe State)
         → BExpr → State → State → State
   step1 ab b init s = recᵐ s (λ s′ → join-state-m init (ab s′ .snd)) (learn-from-success s b)
@@ -84,6 +79,12 @@ module AInt2
     find-inv-aux ab b init s s' i (suc n) =
       find-inv ab b init (over-approx n s s') i n
 
+  {- mark dead code -}
+  mark : Instr → AnInstr
+  mark (Assign x e) = AnPre QFalse (AnAssign x e)
+  mark (Seq i₁ i₂)  = AnSeq (mark i₁) (mark i₂)
+  mark (While b i)  = AnWhile b QFalse (mark i)
+
   do-annot : (State → AnInstr × Maybe State)
            → BExpr → State → Instr → AnInstr
   do-annot ab b s i = recᵐ (mark i) (λ s′ → ab s′ .fst) (learn-from-success s b)
@@ -91,9 +92,9 @@ module AInt2
   ab2 : Instr → State → AnInstr × Maybe State
   ab2 (Assign x e) s = AnPre (s→a s) (AnAssign x e) , just (stupd x (a-af s e) s)
   ab2 (Seq i₁ i₂)  s = let (a_i1 , s1) = ab2 i₁ s in
-                       recᵐ ((AnSeq a_i1 (mark i₂)) , nothing)
+                       recᵐ (AnSeq a_i1 (mark i₂) , nothing)
                             (λ s1′ → let (a_i2 , s2) = ab2 i₂ s1′ in
-                                     (AnSeq a_i1 a_i2) , s2)
+                                     AnSeq a_i1 a_i2 , s2)
                             s1
   ab2 (While b i)  s = let inv = find-inv (ab2 i) b s s i (choose-2 s i) in
                        (AnWhile b (s→a inv) (do-annot (ab2 i) b inv i)) , (learn-from-failure inv b)
@@ -140,11 +141,11 @@ module AInt2Sem
   (over-approx-consistent : ∀ n s s' (consistent : St A → 𝒰)
                           → consistent s → consistent s'
                           → consistent (over-approx n s s'))
-  (learn_from_success_consistent : ∀ s b s' (consistent : St A → 𝒰)
+  (learn-from-success-consistent : ∀ s b s' (consistent : St A → 𝒰)
                                  → consistent s
                                  → learn-from-success s b ＝ just s'
                                  → consistent s')
-  (learn_from_failure_consistent : ∀ s b s' (consistent : St A → 𝒰)
+  (learn-from-failure-consistent : ∀ s b s' (consistent : St A → 𝒰)
                                  → consistent s
                                  → learn-from-failure s b ＝ just s'
                                  → consistent s')
@@ -276,6 +277,190 @@ module AInt2Sem
                        (λ y → join-state-safe-1 s ias)
                        (ab x .snd))
           (learn-from-success s' b)
+
+  step2-pc : ∀ {g ab b s s'} n
+           → ia m g (s→a s) → ia m g (s→a s')
+           → ia m g (s→a (step2 ab b s s' n))
+  step2-pc       zero   ias ias' = ias'
+  step2-pc {ab} (suc n) ias ias' = step2-pc n ias (step1-pc {ab = ab} ias ias')
+
+  mutual
+    find-inv-pc : ∀ {g ab init s b i} n
+                → ia m g (s→a s) → ia m g (s→a init)
+                → ia m g (s→a (find-inv ab b init s i n))
+    find-inv-pc {ab} {init} {s} {b} {i} n ias iai with is-inv ab (step2 ab b init s (choose-1 s i)) b
+    ... | false = find-inv-aux-pc n ias iai
+    ... | true  = step2-pc (choose-1 s i) iai ias
+
+    find-inv-aux-pc : ∀ {g ab init s s' b i} n
+                → ia m g (s→a s) → ia m g (s→a init)
+                → ia m g (s→a (find-inv-aux ab b init s s' i n))
+    find-inv-aux-pc                                   zero   ias iai = tt
+    find-inv-aux-pc {g} {ab} {init} {s} {s'} {b} {i} (suc n) ias iai =
+      find-inv-pc n (over-approx-sem g n s s' s→a ias) iai
+
+  ab2-pc : ∀ {i' s s'} i
+         → ab2 i s ＝ (i' , s')
+         → ∀ {g a} → ia m g (s→a s)
+         → ia m g (pc i' a)
+  ab2-pc               (Assign x e) q {g} {a} is =
+    subst (λ q → ia m g (pc q a)) (ap fst q) is
+  ab2-pc {i'} {s} {s'} (Seq i₁ i₂)               =
+    elimᵐ (λ q → recᵐ (AnSeq (ab2 i₁ s .fst) (mark i₂) , nothing)
+                      (λ s1′ → AnSeq (ab2 i₁ s .fst) (ab2 i₂ s1′ .fst) , ab2 i₂ s1′ .snd)
+                      q
+                 ＝ (i' , s')
+               → ∀ {g a} → ia m g (s→a s) → ia m g (pc i' a))
+      (λ q {g} {a} is → subst (λ q → ia m g (pc q a)) (ap fst q)
+                              (ab2-pc {i' = ab2 i₁ s .fst} i₁ refl is))
+      (λ st q {g} {a} is → subst (λ q → ia m g (pc q a)) (ap fst q)
+                                 (ab2-pc {i' = ab2 i₁ s .fst} i₁ refl is))
+      (ab2 i₁ s .snd)
+  ab2-pc      {s}      (While b i)  q {g} {a} is =
+    subst (λ q → ia m g (pc q a)) (ap fst q)
+      (find-inv-pc (choose-2 s i) is is)
+
+  vc-mark : ∀ i → valid m (vc (mark i) QFalse)
+  vc-mark (Assign x e) = (λ _ → id) , tt
+  vc-mark (Seq i₁ i₂)  = valid-cat (vc (mark i₁) (pc (mark i₂) QFalse))
+                                   (vc-monotonic strong (mark i₁) (vc-mark i₁) .fst)
+                                   (vc-mark i₂)
+    where
+    strong : ∀ g → ia m g QFalse → ia m g (pc (mark i₂) QFalse)
+    strong g c = absurd c
+  vc-mark (While b i)  = (λ _ h → absurd (h .fst)) , (λ _ h → h .fst) , vc-mark i
+
+  step1-consistent : ∀ {ab b s s'}
+                   → (∀ s s′ i → consistent s → ab s ＝ (i , just s′) → consistent s′)
+                   → consistent s → consistent s'
+                   → consistent (step1 ab b s s')
+  step1-consistent {ab} {b} {s} {s'} cab cs cs' =
+    elimᵐ (λ q → consistent (recᵐ s' (λ s′ → join-state-m s (ab s′ .snd)) q))
+          cs'
+          (λ x → elimᵐ (λ q → consistent (join-state-m s q))
+                       cs
+                       (λ y → join-state-consistent s)
+                       (ab x .snd))
+          (learn-from-success s' b)
+
+  step2-consistent : ∀ {ab b s s'} n
+                   → (∀ s s′ i → consistent s → ab s ＝ (i , just s′) → consistent s′)
+                   → consistent s → consistent s'
+                   → consistent (step2 ab b s s' n)
+  step2-consistent  zero   cab cs cs' = cs'
+  step2-consistent (suc n) cab cs cs' = step2-consistent n cab cs (step1-consistent cab cs cs')
+
+  mutual
+    find-inv-consistent : ∀ {ab b init s i} n
+                        → (∀ s s′ i → consistent s → ab s ＝ (i , just s′) → consistent s′)
+                        → consistent s → consistent init
+                        → consistent (find-inv ab b init s i n)
+    find-inv-consistent {ab} {b} {init} {s} {i} n cab cs ci with is-inv ab (step2 ab b init s (choose-1 s i)) b
+    ... | false = find-inv-aux-consistent n cab cs ci (step2-consistent (choose-1 s i) cab ci cs)
+    ... | true  = step2-consistent (choose-1 s i) cab ci cs
+
+    find-inv-aux-consistent : ∀ {ab init s s' b i} n
+                            → (∀ s s′ i → consistent s → ab s ＝ (i , just s′) → consistent s′)
+                            → consistent s → consistent init → consistent s'
+                            → consistent (find-inv-aux ab b init s s' i n)
+    find-inv-aux-consistent               zero   cab cs ci cs' = tt
+    find-inv-aux-consistent {s} {s'} {i} (suc n) cab cs ci cs' =
+      find-inv-consistent n cab (over-approx-consistent n s s' consistent cs cs') ci
+
+  ab2-consistent : ∀ {s s' i'} i
+                 → consistent s
+                 → ab2 i s ＝ (i' , just s')
+                 → consistent s'
+  ab2-consistent {s}           (Assign x e) cs q =
+    subst consistent (just-inj (ap snd q)) (consistent-update {s = s} cs)
+  ab2-consistent {s} {s'} {i'} (Seq i₁ i₂)  cs   =
+    elimᵐ (λ q → ab2 i₁ s .snd ＝ q
+               → recᵐ (AnSeq (ab2 i₁ s .fst) (mark i₂) , nothing)
+                      (λ s1′ → AnSeq (ab2 i₁ s .fst) (ab2 i₂ s1′ .fst) , ab2 i₂ s1′ .snd)
+                      q
+                 ＝ (i' , just s') → consistent s')
+      (λ _ q   → absurd (nothing≠just (ap snd q)))
+      (λ st e1 → elimᵐ (λ q → ab2 i₂ st .snd ＝ q
+                            →  (AnSeq (ab2 i₁ s .fst) (ab2 i₂ st .fst) , q) ＝
+                              (i' , just s')
+                            → consistent s')
+                       (λ _ q → absurd (nothing≠just (ap snd q)))
+                       (λ st' e2 q → ab2-consistent i₂
+                                    (ab2-consistent i₁ cs (×-path refl e1))
+                                    (×-path refl (e2 ∙ ap snd q))
+                        )
+                       (ab2 i₂ st .snd) refl)
+      (ab2 i₁ s .snd) refl
+  ab2-consistent {s} {s'} {i'} (While b i)  cs    =
+    elimᵐ (λ q → learn-from-failure (find-inv (ab2 i) b s s i (choose-2 s i)) b ＝ q
+               → ( AnWhile b (s→a (find-inv (ab2 i) b s s i (choose-2 s i)))
+                             (do-annot (ab2 i) b (find-inv (ab2 i) b s s i (choose-2 s i)) i)
+                 , q ) ＝ (i' , just s')
+               → consistent s')
+      (λ _ q    → absurd (nothing≠just (ap snd q)))
+      (λ st e q → learn-from-failure-consistent
+                    (find-inv (ab2 i) b s s i (choose-2 s i)) b s' consistent
+                    (find-inv-consistent (choose-2 s i)
+                                         (λ s₁ s′ i₁ → ab2-consistent i)
+                                         cs cs)
+                    (e ∙ ap snd q))
+      (learn-from-failure (find-inv (ab2 i) b s s i (choose-2 s i)) b) refl
+
+  mark-pc : ∀ i → pc (mark i) QFalse ＝ QFalse
+  mark-pc (Assign x e) = refl
+  mark-pc (Seq i₁ i₂)  = subst (λ q → pc (mark i₁) q ＝ QFalse) ((mark-pc i₂) ⁻¹) (mark-pc i₁)
+  mark-pc (While b i)  = refl
+
+  do-annot-pc : ∀ {b g i a s}
+              → ia m g (s→a' (learn-from-success s b))
+              → ia m g (pc (do-annot (ab2 i) b s i) a)
+  do-annot-pc {b} {g} {i} {a} {s} =
+    elimᵐ (λ q → ia m g (s→a' q) → ia m g (pc (recᵐ (mark i) (λ s′ → ab2 i s′ .fst) q) a))
+          (λ c  → absurd c)
+          (λ st → ab2-pc i refl)
+          (learn-from-success s b)
+
+  s-stable-correct : ∀ {g s'} s
+                   → is-true (s-stable s s')
+                   → ia m g (s→a s')
+                   → ia m g (s→a s)
+  s-stable-correct          []            ss ias' = tt
+  s-stable-correct {g} {s'} ((x , v) ∷ s) ss ias' =
+    let hh = and-true-≃ {x = thinner (stlup s' x) v} {y = s-stable s s'} $ is-true-≃ $ ss in
+      thinner-sem (stlup s' x) v (is-true-≃ ⁻¹ $  hh .fst) g (AVar x)
+         (transport (to-pred-sem g (stlup s' x) (AVar x) ⁻¹) (lookup-sem s' ias'))
+    , s-stable-correct s (is-true-≃ ⁻¹ $  hh .snd) ias'
+
+  is-inv-correct : ∀ {ab b g s s' ai} s2
+                 → is-true (is-inv ab s b)
+                 → learn-from-success s b ＝ just s'
+                 → ab s' ＝ (ai , s2)
+                 → ia m g (s→a' s2)
+                 → ia m g (s→a s)
+  is-inv-correct {ab} {s} (just x) st ql qab ias2 =
+    let st' = subst (λ q → is-true (s-stable s (join-state-m s (q .snd)))) qab $
+              subst (λ q → is-true (s-stable s (recᵐ s (λ s′ → join-state-m s (ab s′ .snd)) q))) ql
+              st in
+    s-stable-correct s st' (join-state-safe-2 s ias2)
+  is-inv-correct          nothing  st ql qab ias2 = absurd ias2
+
+  mutual
+    find-inv-correct : ∀ {ab b g i init s s' s2 ai} n
+                     → learn-from-success (find-inv ab b init s i n) b ＝ just s'
+                     → ab s' ＝ (ai , s2)
+                     → ia m g (s→a' s2)
+                     → ia m g (s→a (find-inv ab b init s i n))
+    find-inv-correct {ab} {b} {g} {i} {init} {s} {s'} {s2} n ql qab ias2 with is-inv ab (step2 ab b init s (choose-1 s i)) b | recall (is-inv ab (step2 ab b init s (choose-1 s i))) b
+    ... | false | ⟪ _ ⟫  = find-inv-aux-correct n ql qab ias2
+    ... | true  | ⟪ eq ⟫ = is-inv-correct {ab = ab} s2 (is-true-≃ ⁻¹ $ eq) ql qab ias2
+
+    find-inv-aux-correct : ∀ {ab b g i init s s′ s″ s2 ai} n
+                         → learn-from-success (find-inv-aux ab b init s s′ i n) b ＝ just s″
+                         → ab s″ ＝ (ai , s2)
+                         → ia m g (s→a' s2)
+                         → ia m g (s→a (find-inv-aux ab b init s s′ i n))
+    find-inv-aux-correct  zero   ql qab ias2 = tt
+    find-inv-aux-correct (suc n) ql qab ias2 = find-inv-correct n ql qab ias2
 
 -- testing
 
