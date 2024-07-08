@@ -58,11 +58,11 @@ module AIntSem
 
   (m : String → List ℕ → 𝒰) {- TODO prop ? -}
 
-  (top-sem : ∀ e → to-pred top e ＝ QTrue)
-  (subst-to-pred : ∀ v x e e' → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
-  (fromN-sem : ∀ g x → ia m g (to-pred (fromN x) (ANum x)))
-  (to-pred-sem : ∀ g v e → ia m g (to-pred v e) ＝ ia m g (to-pred v (ANum (af g e))))
-  (a-add-sem : ∀ g v1 v2 x1 x2
+  (top-sem : ∀ {e} → to-pred top e ＝ QTrue)
+  (subst-to-pred : ∀ {v x e e'} → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
+  (fromN-sem : ∀ {g x} → ia m g (to-pred (fromN x) (ANum x)))
+  (to-pred-sem : ∀ {g v e} → ia m g (to-pred v e) ＝ ia m g (to-pred v (ANum (af g e))))
+  (a-add-sem : ∀ {g v1 v2 x1 x2}
             → ia m g (to-pred v1 (ANum x1))
             → ia m g (to-pred v2 (ANum x2))
             → ia m g (to-pred (add v1 v2) (ANum (x1 + x2))))
@@ -73,10 +73,10 @@ module AIntSem
 
   lookup-sem : ∀ {g} s → ia m g (s→a s)
              → ∀ {x} → ia m g (to-pred (stlup s x) (ANum (g x)))
-  lookup-sem {g} []            tt            = subst (ia m g) (top-sem (ANum (g _)) ⁻¹) tt
+  lookup-sem {g} []            tt            = subst (ia m g) (top-sem ⁻¹) tt
   lookup-sem {g} ((y , v) ∷ s) (h1 , h2) {x} =
     elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s x) (ANum (g x)))}
-          (λ p → transport (to-pred-sem g v (AVar y) ∙ ap (λ q → ia m g (to-pred v (ANum (g q)))) (p ⁻¹)) h1)
+          (λ p → transport (to-pred-sem ∙ ap (λ q → ia m g (to-pred v (ANum (g q)))) (p ⁻¹)) h1)
           (λ _ → lookup-sem s h2)
           (x ≟ y)
 
@@ -90,7 +90,7 @@ module AIntSem
       (λ p c → absurd c)
       (λ ¬p h → let h' = and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ x ∷ l)} $ is-true-≃ $ h in
                 ap² QConj
-                  (  subst-to-pred v x (AVar y) e
+                  (  subst-to-pred
                    ∙ ap (to-pred v) (elimᵈ {C = λ q → (if ⌊ q ⌋ then e else AVar y) ＝ AVar y}
                                            (λ p → absurd (¬p p))
                                            (λ _ → refl)
@@ -104,22 +104,22 @@ module AIntSem
                 → ia m g (to-pred v (ANum (af g e)))
                 → ia m g (xsubst x e (s→a (stupd x v s)))
   subst-no-dups {g} {v} {x} {e}     []            h1 h2 h3 =
-      subst (ia m g) (subst-to-pred _ _ (AVar _) _ ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar x))}
-                                                              (λ _ → transport (to-pred-sem g v e ⁻¹) h3)
-                                                              (λ ¬p → absurd (¬p refl))
-                                                              (x ≟ x)) , tt
+      subst (ia m g) (subst-to-pred ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar x))}
+                                               (λ _ → transport (to-pred-sem ⁻¹) h3)
+                                               (λ ¬p → absurd (¬p refl))
+                                               (x ≟ x)) , tt
   subst-no-dups {g} {v} {x} {e} {l} ((y , w) ∷ s) h1 (h2 , h3) h4 =
     let h5 = (and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true-≃ $ h1) .snd in
     elimᵈ {C = λ q → ia m g (xsubst x e (s→a (if ⌊ q ⌋ then (y , v) ∷ s else (y , w) ∷ stupd x v s)))}
-      (λ p  →   subst (ia m g) (subst-to-pred v x (AVar y) e ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar y))}
-                                                                        (λ _ → transport (to-pred-sem g v e ⁻¹) h4)
-                                                                        (λ ¬p → absurd (¬p p))
-                                                                        (x ≟ y))
+      (λ p  →   subst (ia m g) (subst-to-pred ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar y))}
+                                                         (λ _ → transport (to-pred-sem ⁻¹) h4)
+                                                         (λ ¬p → absurd (¬p p))
+                                                         (x ≟ y))
               , subst (ia m g) (xsubst-no-occur s (is-true-≃ ⁻¹ $ subst (λ q → is-trueₚ (no-dups s (q ∷ l))) (p ⁻¹) h5) ⁻¹) h3)
-      (λ ¬p →   subst (ia m g) (subst-to-pred w x (AVar y) e ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred w (if ⌊ q ⌋ then e else AVar y))}
-                                                                        (λ p → absurd (¬p p))
-                                                                        (λ _ → h2)
-                                                                        (x ≟ y))
+      (λ ¬p →   subst (ia m g) (subst-to-pred ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred w (if ⌊ q ⌋ then e else AVar y))}
+                                                         (λ p → absurd (¬p p))
+                                                         (λ _ → h2)
+                                                         (x ≟ y))
               , subst-no-dups s (is-true-≃ ⁻¹ $ h5) h3 h4)
       (x ≟ y)
 
@@ -144,9 +144,9 @@ module AIntSem
   a-af-sound : ∀ {s g} e
              → ia m g (s→a s)
              → ia m g (to-pred (a-af s e) (ANum (af g e)))
-  a-af-sound     (ANum n)      h = fromN-sem _ n
+  a-af-sound     (ANum n)      h = fromN-sem
   a-af-sound {s} (AVar x)      h = lookup-sem s h
-  a-af-sound {s} (APlus e₁ e₂) h = a-add-sem _ (a-af s e₁) (a-af s e₂) (af _ e₁) (af _ e₂) (a-af-sound e₁ h) (a-af-sound e₂ h)
+  a-af-sound     (APlus e₁ e₂) h = a-add-sem (a-af-sound e₁ h) (a-af-sound e₂ h)
 
   ab1-correct : ∀ {i' s s'} i
               → consistent s

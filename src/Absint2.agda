@@ -11,6 +11,7 @@ open import Data.String
 open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
 open import Data.List
 open import Data.Dec renaming (elim to elimᵈ)
+open import Data.Reflects
 open import Data.Sum
 
 open import Lang
@@ -115,41 +116,41 @@ module AInt2Sem
 
   (m : String → List ℕ → 𝒰)
 
-  (top-sem : ∀ e → to-pred top e ＝ QTrue)
-  (subst-to-pred : ∀ v x e e' → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
-  (fromN-sem : ∀ g x → ia m g (to-pred (fromN x) (ANum x)))
-  (to-pred-sem : ∀ g v e → ia m g (to-pred v e) ＝ ia m g (to-pred v (ANum (af g e))))
-  (a-add-sem : ∀ g v1 v2 x1 x2
+  (top-sem : ∀ {e} → to-pred top e ＝ QTrue)
+  (subst-to-pred : ∀ {v x e e'} → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
+  (fromN-sem : ∀ {g x} → ia m g (to-pred (fromN x) (ANum x)))
+  (to-pred-sem : ∀ {g v e} → ia m g (to-pred v e) ＝ ia m g (to-pred v (ANum (af g e))))
+  (a-add-sem : ∀ {g v1 v2 x1 x2}
             → ia m g (to-pred v1 (ANum x1))
             → ia m g (to-pred v2 (ANum x2))
             → ia m g (to-pred (add v1 v2) (ANum (x1 + x2))))
 
-  (join-thinner-1 : ∀ a b → is-true (thinner a (join a b)))
-  (join-thinner-2 : ∀ a b → is-true (thinner b (join a b)))
-  (thinner-sem : ∀ a1 a2 → is-true (thinner a1 a2)
-               → ∀ g e → ia m g (to-pred a1 e) → ia m g (to-pred a2 e))
+  (join-thinner-1 : ∀ {a b} → is-true (thinner a (join a b)))
+  (join-thinner-2 : ∀ {a b} → is-true (thinner b (join a b)))
+  (thinner-sem : ∀ {a1 a2} → is-true (thinner a1 a2)
+               → ∀ {g e} → ia m g (to-pred a1 e) → ia m g (to-pred a2 e))
   (let open State.State A top)
-  (over-approx-consistent : ∀ n s s'
+  (over-approx-consistent : ∀ {n s s'}
                           → consistent s → consistent s'
                           → consistent (over-approx n s s'))
-  (learn-from-success-consistent : ∀ s b s'
+  (learn-from-success-consistent : ∀ {s b s'}
                                  → consistent s
                                  → learn-from-success s b ＝ just s'
                                  → consistent s')
-  (learn-from-failure-consistent : ∀ s b s'
+  (learn-from-failure-consistent : ∀ {s b s'}
                                  → consistent s
                                  → learn-from-failure s b ＝ just s'
                                  → consistent s')
   (let open AInt A top fromN add to-pred)
-  (over-approx-sem : ∀ g n s s' (s→a : St A → Assert)
+  (over-approx-sem : ∀ {g n s s'}
                    → ia m g (s→a s)
                    → ia m g (s→a (over-approx n s s')))
   (let open AInt2 A top add fromN to-pred learn-from-success learn-from-failure join thinner over-approx choose-1 choose-2)
-  (learn-from-success-sem : ∀ s b g
+  (learn-from-success-sem : ∀ {s b g}
                           → consistent s
                           → ia m g (s→a s) → ia m g (QB b)
                           → ia m g (s→a' (learn-from-success s b)))
-  (learn-from-failure-sem : ∀ s b g
+  (learn-from-failure-sem : ∀ {s b g}
                           → consistent s
                           → ia m g (s→a s) → ¬ ia m g (QB b)
                           → ia m g (s→a' (learn-from-failure s b)))
@@ -158,10 +159,10 @@ module AInt2Sem
   open AIntSem A top fromN add to-pred m top-sem subst-to-pred fromN-sem to-pred-sem a-add-sem
 
   join-safe-1 : ∀ {g a b x} → ia m g (to-pred a x) → ia m g (to-pred (join a b) x)
-  join-safe-1 {g} {a} {b} {x} iax = thinner-sem a (join a b) (join-thinner-1 a b) g x iax
+  join-safe-1 = thinner-sem join-thinner-1
 
   join-safe-2 : ∀ {g a b x} → ia m g (to-pred b x) → ia m g (to-pred (join a b) x)
-  join-safe-2 {g} {a} {b} {x} iax = thinner-sem b (join a b) (join-thinner-2 a b) g x iax
+  join-safe-2 = thinner-sem join-thinner-2
 
   upd-x : ∀ {g x e} s → ia m g (s→a (stupd x e s)) → ia m g (to-pred e (AVar x))
   upd-x             []            (iax , tt) = iax
@@ -174,14 +175,14 @@ module AInt2Sem
   upd-others : ∀ {g x e} s → ia m g (s→a (stupd x e s))
              → ∀ {y} → x ≠ y → ia m g (to-pred (stlup s y) (AVar y))
   upd-others {g}     {e} []            (iax , tt) {y} ne =
-    subst (ia m g) (top-sem (AVar y) ⁻¹) tt
+    subst (ia m g) (top-sem ⁻¹) tt
   upd-others {g} {x} {e} ((z , v) ∷ s)                   =
     elimᵈ {C = λ q → ia m g (s→a (if ⌊ q ⌋ then (z , e) ∷ s else (z , v) ∷ stupd x e s))
                    → {y : String} → x ≠ y
                    → ia m g (to-pred (if ⌊ y ≟ z ⌋ then v else stlup s y) (AVar y))}
           (λ p  iax {y} ne → elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))}
                                    (λ eq → absurd (ne (p ∙ eq ⁻¹)))
-                                   (λ _  → transport (to-pred-sem g (stlup s y) (AVar y) ⁻¹) (lookup-sem s (iax .snd)))
+                                   (λ _  → transport (to-pred-sem ⁻¹) (lookup-sem s (iax .snd)))
                                    (y ≟ z) )
           (λ ¬p iax {y} ne → elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))}
                                    (λ eq → subst (λ q → ia m g (to-pred v (AVar q))) (eq ⁻¹) (iax .fst))
@@ -253,7 +254,7 @@ module AInt2Sem
   join-state-safe-1 {g} {s2} ((x , v) ∷ s1) (iax , ias) =
     a-upd-ia-all' {s = join-state s1 s2}
       (join-state-consistent s1)
-      (λ {y} ne → transport (to-pred-sem g (stlup (join-state s1 s2) y) (AVar y) ⁻¹)
+      (λ {y} ne → transport (to-pred-sem ⁻¹)
                             (lookup-sem (join-state s1 s2) (join-state-safe-1 s1 ias)))
       (join-safe-1 iax)
 
@@ -262,9 +263,9 @@ module AInt2Sem
   join-state-safe-2 {g} {s2} ((x , v) ∷ s1) iax =
     a-upd-ia-all' {s = join-state s1 s2}
       (join-state-consistent s1)
-      (λ {y} ne → transport (to-pred-sem g (stlup (join-state s1 s2) y) (AVar y) ⁻¹)
+      (λ {y} ne → transport (to-pred-sem ⁻¹)
                             (lookup-sem (join-state s1 s2) (join-state-safe-2 s1 iax)))
-      (join-safe-2 (transport (to-pred-sem g (stlup s2 x) (AVar x) ⁻¹)
+      (join-safe-2 (transport (to-pred-sem ⁻¹)
                               (lookup-sem s2 iax)))
 
   step1-pc : ∀ {g ab b s s'}
@@ -296,9 +297,9 @@ module AInt2Sem
     find-inv-aux-pc : ∀ {g ab init s s' b i} n
                 → ia m g (s→a s) → ia m g (s→a init)
                 → ia m g (s→a (find-inv-aux ab b init s s' i n))
-    find-inv-aux-pc                                   zero   ias iai = tt
-    find-inv-aux-pc {g} {ab} {init} {s} {s'} {b} {i} (suc n) ias iai =
-      find-inv-pc n (over-approx-sem g n s s' s→a ias) iai
+    find-inv-aux-pc  zero   ias iai = tt
+    find-inv-aux-pc (suc n) ias iai =
+      find-inv-pc n (over-approx-sem ias) iai
 
   ab2-pc : ∀ {i' s s'} i
          → ab2 i s ＝ (i' , s')
@@ -309,8 +310,7 @@ module AInt2Sem
   ab2-pc {i'} {s} {s'} (Seq i₁ i₂)               =
     elimᵐ (λ q → recᵐ (AnSeq (ab2 i₁ s .fst) (mark i₂) , nothing)
                       (λ s1′ → AnSeq (ab2 i₁ s .fst) (ab2 i₂ s1′ .fst) , ab2 i₂ s1′ .snd)
-                      q
-                 ＝ (i' , s')
+                      q ＝ (i' , s')
                → ∀ {g a} → ia m g (s→a s) → ia m g (pc i' a))
       (λ q {g} {a} is → subst (λ q → ia m g (pc q a)) (ap fst q)
                               (ab2-pc {i' = ab2 i₁ s .fst} i₁ refl is))
@@ -364,9 +364,9 @@ module AInt2Sem
                             → (∀ s s′ i → consistent s → ab s ＝ (i , just s′) → consistent s′)
                             → consistent s → consistent init → consistent s'
                             → consistent (find-inv-aux ab b init s s' i n)
-    find-inv-aux-consistent               zero   cab cs ci cs' = tt
-    find-inv-aux-consistent {s} {s'} {i} (suc n) cab cs ci cs' =
-      find-inv-consistent n cab (over-approx-consistent n s s' cs cs') ci
+    find-inv-aux-consistent  zero   cab cs ci cs' = tt
+    find-inv-aux-consistent (suc n) cab cs ci cs' =
+      find-inv-consistent n cab (over-approx-consistent cs cs') ci
 
   ab2-consistent : ∀ {s s' i'} i
                  → consistent s
@@ -400,7 +400,6 @@ module AInt2Sem
                → consistent s')
       (λ _ q    → absurd (nothing≠just (ap snd q)))
       (λ st e q → learn-from-failure-consistent
-                    (find-inv (ab2 i) b s s i (choose-2 s i)) b s'
                     (find-inv-consistent (choose-2 s i)
                                          (λ s₁ s′ i₁ → ab2-consistent i)
                                          cs cs)
@@ -428,8 +427,8 @@ module AInt2Sem
   s-stable-correct          []            ss ias' = tt
   s-stable-correct {g} {s'} ((x , v) ∷ s) ss ias' =
     let hh = and-true-≃ {x = thinner (stlup s' x) v} {y = s-stable s s'} $ is-true-≃ $ ss in
-      thinner-sem (stlup s' x) v (is-true-≃ ⁻¹ $  hh .fst) g (AVar x)
-         (transport (to-pred-sem g (stlup s' x) (AVar x) ⁻¹) (lookup-sem s' ias'))
+      thinner-sem (is-true-≃ ⁻¹ $ hh .fst)
+         (transport (to-pred-sem ⁻¹) (lookup-sem s' ias'))
     , s-stable-correct s (is-true-≃ ⁻¹ $  hh .snd) ias'
 
   is-inv-correct : ∀ {ab b g s s' ai} s2
@@ -498,11 +497,11 @@ module AInt2Sem
     let inv = find-inv (ab2 i) b s s i (choose-2 s i) in
     subst (λ q → valid m (vc q (s→a' (learn-from-failure inv b)))) (ap fst eq) $
       (λ g iafgb → do-annot-pc $
-                   learn-from-success-sem inv b g
+                   learn-from-success-sem
                       (find-inv-consistent (choose-2 s i) (λ s₁ s′ i₁ → ab2-consistent i) cs cs)
                       (iafgb .fst)
                       (iafgb .snd))
-    , (λ g iafngb → learn-from-failure-sem inv b g
+    , (λ g iafngb → learn-from-failure-sem
                       (find-inv-consistent (choose-2 s i) (λ s₁ s′ i₁ → ab2-consistent i) cs cs)
                       (iafngb .fst)
                       (iafngb .snd))
@@ -513,7 +512,7 @@ module AInt2Sem
                         (λ g → find-inv-correct (choose-2 s i) e refl)
                         (ab2 i st .fst)
                         (ab2-correct i
-                           (learn-from-success-consistent inv b st
+                           (learn-from-success-consistent
                               (find-inv-consistent (choose-2 s i)
                                  (λ s₁ s′ i₁ → ab2-consistent i) cs cs)
                               e) refl)
@@ -587,6 +586,33 @@ minᵇ x y = if x ≤ᵇ y then x else y
 
 maxᵇ : ℕ → ℕ → ℕ
 maxᵇ x y = if x ≤ᵇ y then y else x
+
+minᵇ-l : ∀ {x y} → is-true (minᵇ x y ≤ᵇ x)
+minᵇ-l {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
+minᵇ-l {x} {y} | false | ⟪ eq ⟫ =
+  reflects-true (≤-reflects y x) $
+  <-weaken y x $
+  <≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt)
+minᵇ-l {x} {y} | true  | _      = reflects-true (≤-reflects x x) ≤-refl
+
+minᵇ-r : ∀ {x y} → is-true (minᵇ x y ≤ᵇ y)
+minᵇ-r {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
+minᵇ-r {x} {y} | false | _      = reflects-true (≤-reflects y y) ≤-refl
+minᵇ-r {x} {y} | true  | ⟪ eq ⟫ = is-true-≃ ⁻¹ $ eq
+
+maxᵇ-l : ∀ {x y} → is-true (x ≤ᵇ maxᵇ x y)
+maxᵇ-l {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
+maxᵇ-l {x} {y} | false | _      = reflects-true (≤-reflects x x) ≤-refl
+maxᵇ-l {x} {y} | true  | ⟪ eq ⟫ = is-true-≃ ⁻¹ $ eq
+
+maxᵇ-r : ∀ {x y} → is-true (y ≤ᵇ maxᵇ x y)
+maxᵇ-r {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
+maxᵇ-r {x} {y} | false | ⟪ eq ⟫ =
+  reflects-true (≤-reflects y x) $
+  <-weaken y x $
+  <≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt)
+maxᵇ-r {x} {y} | true  | _      = reflects-true (≤-reflects y y) ≤-refl
+
 
 i-learn-from-success-aux : State → String → Interval → Interval → Maybe State
 i-learn-from-success-aux s n (Below x)     (Above y)     = if x ≤ᵇ y then nothing
@@ -675,9 +701,9 @@ i-choose-2 : State → Instr → ℕ
 i-choose-2 _ _ = 3
 
 open module IntervalInt = AInt2 Interval AllN i-add i-fromN i-to-pred
-                            i-learn-from-success i-learn-from-failure
-                            i-join i-thinner i-over-approx
-                            i-choose-1 i-choose-2
+                                i-learn-from-success i-learn-from-failure
+                                i-join i-thinner i-over-approx
+                                i-choose-1 i-choose-2
 
 i-1 : Instr
 i-1 = While (BLt (AVar "x") (ANum 10))
@@ -748,11 +774,158 @@ res-3 =   AnWhile (BLt (AVar "x") (ANum 10))
 test-3 : ab2 i-3 s-3 ＝ res-3
 test-3 = refl
 
--- concrete semantics
+-- properties
 
 i-m-aux : List ℕ → 𝒰
 i-m-aux (x ∷ y ∷ []) = x ≤ y
 i-m-aux _            = ⊥
 
 i-m : String → List ℕ → 𝒰
-i-m s l = if s =ₛ "leq" then i-m-aux l else ⊥
+i-m s l = if ⌊ s ≟ "leq" ⌋ then i-m-aux l else ⊥
+
+i-top-sem : ∀ {e} → i-to-pred AllN e ＝ QTrue
+i-top-sem = refl
+
+i-to-pred-sem : ∀ {g v e} → ia i-m g (i-to-pred v e) ＝ ia i-m g (i-to-pred v (ANum (af g e)))
+i-to-pred-sem {v = Above x}     = refl
+i-to-pred-sem {v = Below x}     = refl
+i-to-pred-sem {v = Between x y} = refl
+i-to-pred-sem {v = AllN}        = refl
+
+i-subst-to-pred : ∀ {v x e e'} → xsubst x e' (i-to-pred v e) ＝ i-to-pred v (asubst x e' e)
+i-subst-to-pred {v = Above x}     = refl
+i-subst-to-pred {v = Below x}     = refl
+i-subst-to-pred {v = Between x y} = refl
+i-subst-to-pred {v = AllN}        = refl
+
+i-fromN-sem : ∀ {g x} → ia i-m g (i-to-pred (i-fromN x) (ANum x))
+i-fromN-sem = ≤-refl , ≤-refl
+
+i-add-sem : ∀ {g v1 v2 x1 x2}
+          → ia i-m g (i-to-pred v1 (ANum x1))
+          → ia i-m g (i-to-pred v2 (ANum x2))
+          → ia i-m g (i-to-pred (i-add v1 v2) (ANum (x1 + x2)))
+i-add-sem {v1 = Above x}     {v2 = Above y}     h1        h2        = ≤-cong-+ _ _ _ _ h1 h2
+i-add-sem {v1 = Above _}     {v2 = Below _}     _         _         = tt
+i-add-sem {v1 = Above x}     {v2 = Between y z} h1        (h2 , _)  = ≤-cong-+ _ _ _ _ h1 h2
+i-add-sem {v1 = Above _}     {v2 = AllN}        _         _         = tt
+i-add-sem {v1 = Below _}     {v2 = Above _}     _         _         = tt
+i-add-sem {v1 = Below x}     {v2 = Below t}     h1        h2        = ≤-cong-+ _ _ _ _ h1 h2
+i-add-sem {v1 = Below x}     {v2 = Between y z} h1        (_ , h2)  = ≤-cong-+ _ _ _ _ h1 h2
+i-add-sem {v1 = Below x}     {v2 = AllN}        _         _         = tt
+i-add-sem {v1 = Between x y} {v2 = Above z}     (h1 , _)  h2        = ≤-cong-+ _ _ _ _ h1 h2
+i-add-sem {v1 = Between x y} {v2 = Below z}     (_  , h1) h2        = ≤-cong-+ _ _ _ _ h1 h2
+i-add-sem {v1 = Between x y} {v2 = Between z w} (h1 , h2) (h3 , h4) = ≤-cong-+ _ _ _ _ h1 h3
+                                                                    , ≤-cong-+ _ _ _ _ h2 h4
+i-add-sem {v1 = Between x y} {v2 = AllN}        _         _         = tt
+i-add-sem {v1 = AllN}                           _         _         = tt
+
+open-interval-sem : ∀ {g s n} v
+                    → ia i-m g (i-to-pred v (AVar n))
+                    → ia i-m g (i-to-pred (open-interval v (stlup s n)) (AVar n))
+open-interval-sem {s} {n} (Above x)     ian with stlup s n
+open-interval-sem         (Above x)     ian | Above y     with x ≤ᵇ y
+open-interval-sem         (Above x)     ian | Above y | true  = ian
+open-interval-sem         (Above x)     ian | Above y | false = tt
+open-interval-sem         (Above _)     ian | Below _     = tt
+open-interval-sem         (Above _)     ian | Between _ _ = tt
+open-interval-sem         (Above _)     ian | AllN        = tt
+open-interval-sem {s} {n} (Below x)     ian with stlup s n
+open-interval-sem         (Below _)     ian | Above _      = tt
+open-interval-sem         (Below x)     ian | Below y     with y ≤ᵇ x
+open-interval-sem         (Below x)     ian | Below y | true  = ian
+open-interval-sem         (Below x)     ian | Below y | false = tt
+open-interval-sem         (Below _)     ian | Between _ _ = tt
+open-interval-sem         (Below _)     ian | AllN        = tt
+open-interval-sem {s} {n} (Between x y) ian with stlup s n
+open-interval-sem         (Between _ _) ian | Above _     = tt
+open-interval-sem         (Between _ _) ian | Below _     = tt
+open-interval-sem         (Between x y) ian | Between z w with x ≤ᵇ z
+open-interval-sem         (Between x y) ian | Between z w | true  with w ≤ᵇ y
+open-interval-sem         (Between x y) ian | Between z w | true | true  = ian
+open-interval-sem         (Between x y) ian | Between z w | true | false = ian .fst
+open-interval-sem         (Between x y) ian | Between z w | false with w ≤ᵇ y
+open-interval-sem         (Between x y) ian | Between z w | false | true  = ian .snd
+open-interval-sem         (Between x y) ian | Between z w | false | false = tt
+open-interval-sem         (Between _ _) ian | AllN        = tt
+open-interval-sem          AllN         ian = tt
+
+open-intervals-sem : ∀ {g s'} s
+                    → ia i-m g (s→a s)
+                    → ia i-m g (s→a (open-intervals s s'))
+open-intervals-sem      []            tt          = tt
+open-intervals-sem {s'} ((x , v) ∷ s) (iax , ias) =
+  open-interval-sem {s = s'} v iax , open-intervals-sem {s' = s'} s ias
+
+i-over-approx-sem : ∀ {g n s s'}
+                  → ia i-m g (s→a s)
+                  → ia i-m g (s→a (i-over-approx n s s'))
+i-over-approx-sem {n = zero}           ias = tt
+i-over-approx-sem {n = suc n} {s} {s'} ias = open-intervals-sem {s' = s'} s ias
+
+i-join-thinner-1 : ∀ {a b} → is-true (i-thinner a (i-join a b))
+i-join-thinner-1 {a = Above x}     {b = Above y}     = minᵇ-l {x = x} {y = y}
+i-join-thinner-1 {a = Above _}     {b = Below _}     = tt
+i-join-thinner-1 {a = Above x}     {b = Between y z} = minᵇ-l {x = x} {y = y}
+i-join-thinner-1 {a = Above _}     {b = AllN}        = tt
+i-join-thinner-1 {a = Below _}     {b = Above _}     = tt
+i-join-thinner-1 {a = Below x}     {b = Below y}     = maxᵇ-l {x = x} {y = y}
+i-join-thinner-1 {a = Below x}     {b = Between y z} = maxᵇ-l {x = x} {y = z}
+i-join-thinner-1 {a = Below _}     {b = AllN}        = tt
+i-join-thinner-1 {a = Between x y} {b = Above z}     = minᵇ-l {x = x} {y = z}
+i-join-thinner-1 {a = Between x y} {b = Below z}     = maxᵇ-l {x = y} {y = z}
+i-join-thinner-1 {a = Between x y} {b = Between z w} =
+  is-true-≃ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ x} {y = y ≤ᵇ maxᵇ y w} ⁻¹ $
+  (is-true-≃ $ minᵇ-l {x = x} {y = z}) , (is-true-≃ $ maxᵇ-l {x = y} {y = w})
+i-join-thinner-1 {a = Between _ _} {b = AllN}        = tt
+i-join-thinner-1 {a = AllN}        {b = Above _}     = tt
+i-join-thinner-1 {a = AllN}        {b = Below _}     = tt
+i-join-thinner-1 {a = AllN}        {b = Between _ _} = tt
+i-join-thinner-1 {a = AllN}        {b = AllN}        = tt
+
+i-join-thinner-2 : ∀ {a b} → is-true (i-thinner b (i-join a b))
+i-join-thinner-2 {a = Above x}     {b = Above y}     = minᵇ-r {x = x} {y = y}
+i-join-thinner-2 {a = Above _}     {b = Below _}     = tt
+i-join-thinner-2 {a = Above x}     {b = Between y z} = minᵇ-r {x = x} {y = y}
+i-join-thinner-2 {a = Above _}     {b = AllN}        = tt
+i-join-thinner-2 {a = Below _}     {b = Above _}     = tt
+i-join-thinner-2 {a = Below x}     {b = Below y}     = maxᵇ-r {x = x} {y = y}
+i-join-thinner-2 {a = Below x}     {b = Between y z} = maxᵇ-r {x = x} {y = z}
+i-join-thinner-2 {a = Below _}     {b = AllN}        = tt
+i-join-thinner-2 {a = Between x y} {b = Above z}     = minᵇ-r {x = x} {y = z}
+i-join-thinner-2 {a = Between x y} {b = Below z}     = maxᵇ-r {x = y} {y = z}
+i-join-thinner-2 {a = Between x y} {b = Between z w} =
+  is-true-≃ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ z} {y = w ≤ᵇ maxᵇ y w} ⁻¹ $
+  (is-true-≃ $ minᵇ-r {x = x} {y = z}) , (is-true-≃ $ maxᵇ-r {x = y} {y = w})
+i-join-thinner-2 {a = Between _ _} {b = AllN}        = tt
+i-join-thinner-2 {a = AllN}        {b = Above _}     = tt
+i-join-thinner-2 {a = AllN}        {b = Below _}     = tt
+i-join-thinner-2 {a = AllN}        {b = Between _ _} = tt
+i-join-thinner-2 {a = AllN}        {b = AllN}        = tt
+
+i-thinner-sem : ∀ {a1 a2} → is-true (i-thinner a1 a2)
+              → ∀ {g e} → ia i-m g (i-to-pred a1 e)
+              → ia i-m g (i-to-pred a2 e)
+i-thinner-sem {a1 = Above x}     {a2 = Above y}     h  ia1         =
+  ≤-trans (true-reflects (≤-reflects y x) h) ia1
+i-thinner-sem {a1 = Below x}     {a2 = Above y}     h  ia1         = absurd h
+i-thinner-sem {a1 = Between x y} {a2 = Above z}     h  (iax , _)   =
+  ≤-trans (true-reflects (≤-reflects z x) h) iax
+i-thinner-sem {a1 = AllN}        {a2 = Above x}     h  ia1         = absurd h
+i-thinner-sem {a1 = Above x}     {a2 = Below y}     h  ia1         = absurd h
+i-thinner-sem {a1 = Below x}     {a2 = Below y}     h  ia1         =
+  ≤-trans ia1 (true-reflects (≤-reflects x y) h)
+i-thinner-sem {a1 = Between x y} {a2 = Below z}     h  (_ , iay)   =
+  ≤-trans iay (true-reflects (≤-reflects y z) h)
+i-thinner-sem {a1 = AllN}        {a2 = Below x}     h  ia1         = absurd h
+i-thinner-sem {a1 = Above x}     {a2 = Between y z} h  ia1         = absurd h
+i-thinner-sem {a1 = Below x}     {a2 = Between y z} h  ia1         = absurd h
+i-thinner-sem {a1 = Between x y} {a2 = Between z w} h  (iax , iay) =
+  let hh = and-true-≃ {x = z ≤ᵇ x} {y = y ≤ᵇ w} $ is-true-≃ $ h in
+    ≤-trans (true-reflects (≤-reflects z x) (is-true-≃ ⁻¹ $ hh .fst)) iax
+  , ≤-trans iay (true-reflects (≤-reflects y w) (is-true-≃ ⁻¹ $ hh .snd))
+i-thinner-sem {a1 = AllN}        {a2 = Between x y} h  ia1         = absurd h
+i-thinner-sem {a1 = Above x}     {a2 = AllN}        tt ia1         = tt
+i-thinner-sem {a1 = Below x}     {a2 = AllN}        h  ia1         = tt
+i-thinner-sem {a1 = Between x y} {a2 = AllN}        h  ia1         = tt
+i-thinner-sem {a1 = AllN}        {a2 = AllN}        h  ia1         = tt
