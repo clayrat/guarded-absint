@@ -551,6 +551,20 @@ maxᵇ-r {x} {y} | false | ⟪ eq ⟫ =
   <≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt)
 maxᵇ-r {x} {y} | true  | _      = reflects-true (≤-reflects y y) ≤-refl
 
+≤ᵇ-minᵇ : ∀ {x y z} → (x ≤ᵇ minᵇ y z) ＝ (x ≤ᵇ y) and (x ≤ᵇ z)
+≤ᵇ-minᵇ {x} {y} {z} with y ≤ᵇ z | recall (y ≤ᵇ_) z
+≤ᵇ-minᵇ {x} {y} {z} | false | ⟪ eqyz ⟫ with x ≤ᵇ z | recall (x ≤ᵇ_) z
+≤ᵇ-minᵇ {x} {y} {z} | false | ⟪ eqyz ⟫ | false | ⟪ eqxz ⟫ = and-absorb-r (x ≤ᵇ y) ⁻¹
+≤ᵇ-minᵇ {x} {y} {z} | false | ⟪ eqyz ⟫ | true  | ⟪ eqxz ⟫ =
+  (and-id-r (x ≤ᵇ y) ∙ (is-true≃is-trueₚ $ reflects-true (≤-reflects x y) $
+                        ≤-trans (true-reflects (≤-reflects x z) (is-true≃is-trueₚ  ⁻¹ $ eqxz))
+                                (<-weaken z y (<≃≱ ⁻¹ $ false-reflects (≤-reflects y z) (subst (is-true ∘ not) (eqyz ⁻¹) tt))))) ⁻¹
+≤ᵇ-minᵇ {x} {y} {z} | true  | ⟪ eqyz ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+≤ᵇ-minᵇ {x} {y} {z} | true  | ⟪ eqyz ⟫ | false | ⟪ eqxy ⟫ = refl
+≤ᵇ-minᵇ {x} {y} {z} | true  | ⟪ eqyz ⟫ | true  | ⟪ eqxy ⟫ =
+  (is-true≃is-trueₚ $ reflects-true (≤-reflects x z) $
+   ≤-trans (true-reflects (≤-reflects x y) (is-true≃is-trueₚ  ⁻¹ $ eqxy))
+           (true-reflects (≤-reflects y z) (is-true≃is-trueₚ  ⁻¹ $ eqyz))) ⁻¹
 
 i-learn-from-success-aux : State → String → Interval → Interval → Maybe State
 i-learn-from-success-aux s n (Below x)     (Above y)     = if x ≤ᵇ y then nothing
@@ -891,6 +905,129 @@ open module IIntSem = AIntCoreSem Interval AllN i-fromN i-add i-to-pred
                                   (λ {g} {v1} {v2} {x1} {x2} → i-add-sem {g} {v1} {v2} {x1} {x2})
                                   (λ {v} {x} {e} {e'} → i-subst-to-pred {v} {x} {e} {e'})
 
+i-learn-from-success-aux-sem : ∀ {s n e g}
+                             → consistent s
+                             → ia i-m g (s→a s)
+                             → is-true (g n <ᵇ af g e)
+                             → ia i-m g (s→a' (i-learn-from-success-aux s n (a-af s e) (stlup s n)))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab with a-af s e | stlup s n | recall (a-af s) e | recall (stlup s) n
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Above x     | _           | ⟪ eqa ⟫ | ⟪ eql ⟫ = ias
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  let y≤gn = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) $
+                (lookup-sem s ias))
+    ( y≤gn
+    , (<≃≤pred {n = x} (<-weaken-z y x (<≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt))) $
+       <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤x))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  let y≤gn = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  (≤≃≯ $ true-reflects (≤-reflects x y) (is-true≃is-trueₚ ⁻¹ $ eq))
+     (<-≤-trans (≤-<-trans y≤gn (true-reflects (<-reflects (g n) (af g e)) iab)) afge≤x)
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ = ias
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  let afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+      gn<x = <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤x
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    (<≃≤pred {n = x} (<-weaken-z (g n) x gn<x) $ gn<x)
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  let ( y≤gn , gn≤z ) = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    ( y≤gn
+    , true-reflects (≤-reflects (g n) (minᵇ (pred x) z))
+       (subst is-true (≤ᵇ-minᵇ {x = g n} {y = pred x} {z = z} ⁻¹)
+         (is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = g n ≤ᵇ pred x} {y = g n ≤ᵇ z} ⁻¹ $
+            (is-true≃is-trueₚ $ reflects-true (≤-reflects (g n) (pred x))
+              (<≃≤pred {n = x} (<-weaken-z y x (<≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt))) $
+               <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤x))
+          , (is-true≃is-trueₚ $ reflects-true (≤-reflects (g n) z) gn≤z))))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  let (y≤gn , _) = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  (≤≃≯ $ true-reflects (≤-reflects x y) (is-true≃is-trueₚ ⁻¹ $ eq))
+     (<-≤-trans (≤-<-trans y≤gn (true-reflects (<-reflects (g n) (af g e)) iab)) afge≤x)
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Below x     | AllN        | ⟪ eqa ⟫ | ⟪ eql ⟫ =
+  let afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+      gn<x = <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤x
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    (<≃≤pred {n = x} (<-weaken-z (g n) x gn<x) $ gn<x)
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ with y ≤ᵇ z | recall (y ≤ᵇ_) z
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  let z≤gn = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      (_ , afge≤y) = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    ( z≤gn
+    , (<≃≤pred {n = y} (<-weaken-z z y (<≃≱ ⁻¹ $ false-reflects (≤-reflects y z) (subst (is-true ∘ not) (eq ⁻¹) tt))) $
+       <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤y))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  let z≤gn = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      (_ , afge≤y) = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  (≤≃≯ $ true-reflects (≤-reflects y z) (is-true≃is-trueₚ ⁻¹ $ eq))
+    (≤-<-trans z≤gn (<-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤y))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ with y ≤ᵇ z | recall (y ≤ᵇ_) z
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ = ias
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  let (_ , afge≤y) = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+      gn<y = <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤y
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    (<≃≤pred {n = y} (<-weaken-z (g n) y gn<y) $ gn<y)
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ with y ≤ᵇ z | recall (y ≤ᵇ_) z
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqyz ⟫ with y ≤ᵇ w | recall (y ≤ᵇ_) w
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqyz ⟫ | false | ⟪ eqyw ⟫ = ias
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqyz ⟫ | true  | ⟪ eqyw ⟫ =
+  let (z≤gn , _) = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      (_ , afge≤y) = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    ( z≤gn
+    , (<≃≤pred {n = y} (<-weaken-z z y (<≃≱ ⁻¹ $ false-reflects (≤-reflects y z) (subst (is-true ∘ not) (eqyz ⁻¹) tt))) $
+       <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤y))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eqyz ⟫ =
+  let (z≤gn , _) = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
+      (_ , afge≤y) = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+    in
+  (≤≃≯ $ true-reflects (≤-reflects y z) (is-true≃is-trueₚ ⁻¹ $ eqyz))
+    (≤-<-trans z≤gn (<-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤y))
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | Between x y | AllN        | ⟪ eqa ⟫ | ⟪ eql ⟫ =
+  let (_ , afge≤y) = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
+      gn<y = <-≤-trans (true-reflects (<-reflects (g n) (af g e)) iab) afge≤y
+    in
+  a-upd-ia-all' {s = s} cs
+    (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
+    (<≃≤pred {n = y} (<-weaken-z (g n) y gn<y) $ gn<y)
+i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias iab | AllN        | _           | ⟪ eqa ⟫ | ⟪ eql ⟫ = ias
+
+i-learn-from-success-sem : ∀ {s b g}
+                         → consistent s
+                         → ia i-m g (s→a s)
+                         → ia i-m g (QB b)
+                         → ia i-m g (s→a' (i-learn-from-success s b))
+i-learn-from-success-sem {b = BLt (ANum n) e}       cs ias iab = ias
+i-learn-from-success-sem {b = BLt (AVar x) e}       cs ias iab =
+  i-learn-from-success-aux-sem {n = x} {e = e} cs ias iab
+i-learn-from-success-sem {b = BLt (APlus e₁ e₂) e₃} cs ias iab = ias
+
 open module IntervalIntSem = AInt2Sem Interval AllN i-add i-fromN i-to-pred
                                       i-learn-from-success i-learn-from-failure
                                       i-join i-thinner i-over-approx
@@ -908,5 +1045,5 @@ open module IntervalIntSem = AInt2Sem Interval AllN i-add i-fromN i-to-pred
                                       (λ {s} {b} {s'} → {!!})
                                       (λ {s} {b} {s'} → {!!})
                                       (λ {g} {n} {s} {s'} → i-over-approx-sem {g} {n} {s} {s'})
-                                      (λ {s} {b} {g} → {!!})
+                                      (λ {s} {b} {g} → i-learn-from-success-sem {s} {b} {g} )
                                       (λ {s} {b} {g} → {!!})
