@@ -929,3 +929,18 @@ i-thinner-sem {a1 = Above x}     {a2 = AllN}        tt ia1         = tt
 i-thinner-sem {a1 = Below x}     {a2 = AllN}        h  ia1         = tt
 i-thinner-sem {a1 = Between x y} {a2 = AllN}        h  ia1         = tt
 i-thinner-sem {a1 = AllN}        {a2 = AllN}        h  ia1         = tt
+
+open-intervals-no-dups : ∀ {s' l} s
+                       → is-true (no-dups s l)
+                       → is-true (no-dups (open-intervals s s') l)
+open-intervals-no-dups          []            h = tt
+open-intervals-no-dups {s'} {l} ((x , v) ∷ s) h =
+  let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $ is-true-≃ $ h in
+  is-true-≃ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups (open-intervals s s') (x ∷ l)} ⁻¹ $
+  (hh .fst) , (is-true-≃ $ open-intervals-no-dups {s' = s'} s (is-true-≃ ⁻¹ $ hh .snd))
+
+i-over-approx-consistent : ∀ {n s s'}
+                         → consistent s → consistent s'
+                         → consistent (i-over-approx n s s')
+i-over-approx-consistent {n = zero}           cs _ = tt
+i-over-approx-consistent {n = suc _} {s} {s'} cs _ = open-intervals-no-dups {s' = s'} s cs
