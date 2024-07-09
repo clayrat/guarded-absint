@@ -16,10 +16,7 @@ open import Data.Sum
 
 open import Lang
 open import State
-
--- TODO better decoupling
--- we need s→a, a-af, lookup-sem, a-af-sound, lookup-sem2 from Absint1
-open import Absint1
+open import AbsintCore
 
 module AInt2
   (A : 𝒰)
@@ -38,11 +35,7 @@ module AInt2
   where
 
   open State.State A top
-  open AInt A top fromN add to-pred
-
-  s→a' : Maybe State → Assert
-  s→a' (just s) = s→a s
-  s→a' nothing  = QFalse
+  open AbsintCore.AIntCore A top fromN add to-pred
 
   join-state : State → State → State
   join-state []             s2 = []
@@ -141,11 +134,10 @@ module AInt2Sem
                                  → consistent s
                                  → learn-from-failure s b ＝ just s'
                                  → consistent s')
-  (let open AInt A top fromN add to-pred)
+  (let open AbsintCore.AIntCore A top fromN add to-pred)
   (over-approx-sem : ∀ {g n s s'}
                    → ia m g (s→a s)
                    → ia m g (s→a (over-approx n s s')))
-  (let open AInt2 A top add fromN to-pred learn-from-success learn-from-failure join thinner over-approx choose-1 choose-2)
   (learn-from-success-sem : ∀ {s b g}
                           → consistent s
                           → ia m g (s→a s) → ia m g (QB b)
@@ -156,7 +148,8 @@ module AInt2Sem
                           → ia m g (s→a' (learn-from-failure s b)))
   where
 
-  open AIntSem A top fromN add to-pred m top-sem subst-to-pred fromN-sem to-pred-sem a-add-sem
+  open AIntCoreSem A top fromN add to-pred m top-sem fromN-sem to-pred-sem a-add-sem subst-to-pred
+  open AInt2 A top add fromN to-pred learn-from-success learn-from-failure join thinner over-approx choose-1 choose-2
 
   join-safe-1 : ∀ {g a b x} → ia m g (to-pred a x) → ia m g (to-pred (join a b) x)
   join-safe-1 = thinner-sem join-thinner-1
@@ -189,61 +182,6 @@ module AInt2Sem
                                    (λ _  → upd-others s (iax .snd) ne)
                                    (y ≟ z) )
           (x ≟ z)
-
-  a-upd-ia-all : ∀ {g l x e} s → is-true (no-dups s l)
-               → (∀ {y} → y ≠ x → is-true (not (mem y l))
-                  → ia m g (to-pred (stlup s y) (AVar y)))
-               → ia m g (to-pred e (AVar x))
-               → ia m g (s→a (stupd x e s))
-  a-upd-ia-all []            cs f h = h , tt
-  a-upd-ia-all {g} {l} {x} {e} ((z , v) ∷ s) cs     =
-    elimᵈ {C = λ q → ({y : String} → y ≠ x → is-true (not (mem y l))
-                      → ia m g (to-pred (if ⌊ y ≟ z ⌋ then v else stlup s y) (AVar y)))
-                   → ia m g (to-pred e (AVar x))
-                   → ia m g (s→a (if ⌊ q ⌋ then (z , e) ∷ s else (z , v) ∷ stupd x e s)) }
-          (λ p  ias iax →   (subst (λ q → ia m g (to-pred e (AVar q))) p iax)
-                          , (lookup-sem2 {l = z ∷ l} s
-                             (is-true-≃ ⁻¹ $ (and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true-≃ $ cs) .snd)
-                             λ y h →
-                               let hh = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
-                                        subst is-trueₚ (not-or ⌊ z ≟ y ⌋ (mem y l)) (is-true-≃ $ h) in
-                               elimᵈ {C = λ q → (y ≠ x →
-                                                 is-true (not (mem y l)) →
-                                                 ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
-                                                ia m g (to-pred (stlup s y) (AVar y))}
-                                     (λ e  _ → absurd (elimᵈ {C = λ q → is-trueₚ (not ⌊ q ⌋) → ⊥}
-                                                             (λ _     → false≠true)
-                                                             (λ ¬e′ _ → ¬e′ (e ⁻¹))
-                                                             (z ≟ y) (hh .fst)))
-                                     (λ ¬e f → f (λ p′ → ¬e (p′ ∙ p)) (is-true-≃ ⁻¹ $ hh .snd))
-                                     (y ≟ z)
-                                     (ias {y})))
-          (λ ¬p ias iax → let hh = and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true-≃ $ cs in
-                            elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s z) (AVar z))
-                                           → ia m g (to-pred v (AVar z))}
-                                  (λ _  → id)
-                                  (λ ¬c → absurd (¬c refl))
-                                  (z ≟ z)
-                                  (ias (λ w → ¬p (w ⁻¹)) (is-true-≃ ⁻¹ $ hh .fst))
-                          , a-upd-ia-all {l = z ∷ l} s (is-true-≃ ⁻¹ $ hh .snd)
-                               (λ {y} ne h → let h′ = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
-                                                      is-true-≃ $ subst is-true (not-or ⌊ z ≟ y ⌋ (mem y l)) h in
-                                             elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))
-                                                            → ia m g (to-pred (stlup s y) (AVar y))}
-                                                   (λ yz → absurd (elimᵈ {C = λ q → is-trueₚ (not ⌊ q ⌋) → ⊥}
-                                                                         (λ _ → false≠true) (λ ¬e′ _ → ¬e′ (yz ⁻¹))
-                                                                         (z ≟ y) (h′ .fst)))
-                                                   (λ ¬yz → id)
-                                                   (y ≟ z)
-                                                   (ias ne (is-true-≃ ⁻¹ $ h′ .snd)))
-                               iax)
-          (x ≟ z)
-
-  a-upd-ia-all' : ∀ {g s x e} → consistent s
-                → (∀ {y} → y ≠ x → ia m g (to-pred (stlup s y) (AVar y)))
-                → ia m g (to-pred e (AVar x))
-                → ia m g (s→a (stupd x e s))
-  a-upd-ia-all' {s} cs ias = a-upd-ia-all s cs (λ {y} ne _ → ias ne)
 
   join-state-consistent : ∀ {s2} s1 → consistent (join-state s1 s2)
   join-state-consistent      []             = tt
@@ -577,7 +515,7 @@ i-to-pred (Between x y) e = QConj (QPred "leq" (ANum x ∷ e ∷ []))
 i-to-pred  AllN         _ = QTrue
 
 open module IState = State.State Interval AllN
-open module IInt = AInt Interval AllN i-fromN i-add i-to-pred
+open module IInt = AIntCore Interval AllN i-fromN i-add i-to-pred
 
 -- TODO upstream
 
