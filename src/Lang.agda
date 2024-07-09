@@ -31,7 +31,7 @@ af g (AVar x)      = g x
 af g (APlus e₁ e₂) = af g e₁ + af g e₂
 
 bf : (String → ℕ) → BExpr → Bool
-bf g (BLt e₁ e₂) = af g e₁ ≤ᵇ af g e₂
+bf g (BLt e₁ e₂) = af g e₁ <ᵇ af g e₂
 
 {- Weakest pre-condition calculus -}
 
@@ -144,7 +144,7 @@ subst-sound-a     (APlus e₁ e₂)          =
 subst-sound-b : {g : String → ℕ} {e' : AExpr} {x : String}
               → (b : BExpr)
               → bf g (bsubst x e' b) ＝ bf (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y) b
-subst-sound-b (BLt e₁ e₂) = ap² _≤ᵇ_ (subst-sound-a e₁) (subst-sound-a e₂)
+subst-sound-b (BLt e₁ e₂) = ap² _<ᵇ_ (subst-sound-a e₁) (subst-sound-a e₂)
 
 subst-sound-l : {g : String → ℕ} {e' : AExpr} {x : String}
               → (l : List AExpr)
