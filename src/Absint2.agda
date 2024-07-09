@@ -882,3 +882,31 @@ i-over-approx-consistent : ∀ {n s s'}
                          → consistent (i-over-approx n s s')
 i-over-approx-consistent {n = zero}           cs _ = tt
 i-over-approx-consistent {n = suc _} {s} {s'} cs _ = open-intervals-no-dups {s' = s'} s cs
+
+open module IIntSem = AIntCoreSem Interval AllN i-fromN i-add i-to-pred
+                                  i-m
+                                  (λ {e} → i-top-sem {e})
+                                  (λ {g} {x} → i-fromN-sem {g} {x})
+                                  (λ {g} {v} {e} → i-to-pred-sem {g} {v} {e})
+                                  (λ {g} {v1} {v2} {x1} {x2} → i-add-sem {g} {v1} {v2} {x1} {x2})
+                                  (λ {v} {x} {e} {e'} → i-subst-to-pred {v} {x} {e} {e'})
+
+open module IntervalIntSem = AInt2Sem Interval AllN i-add i-fromN i-to-pred
+                                      i-learn-from-success i-learn-from-failure
+                                      i-join i-thinner i-over-approx
+                                      i-choose-1 i-choose-2
+                                      i-m
+                                      (λ {e} → i-top-sem {e})
+                                      (λ {v} {x} {e} {e'} → i-subst-to-pred {v} {x} {e} {e'})
+                                      (λ {g} {x} → i-fromN-sem {g} {x})
+                                      (λ {g} {v} {e} → i-to-pred-sem {g} {v} {e})
+                                      (λ {g} {v1} {v2} {x1} {x2} → i-add-sem {g} {v1} {v2} {x1} {x2})
+                                      (λ {a} {b} → i-join-thinner-1 {a} {b})
+                                      (λ {a} {b} → i-join-thinner-2 {a} {b})
+                                      (λ {a1} {a2} → i-thinner-sem {a1} {a2})
+                                      (λ {n} {s} {s'} → i-over-approx-consistent {n} {s} {s'})
+                                      (λ {s} {b} {s'} → {!!})
+                                      (λ {s} {b} {s'} → {!!})
+                                      (λ {g} {n} {s} {s'} → i-over-approx-sem {g} {n} {s} {s'})
+                                      (λ {s} {b} {g} → {!!})
+                                      (λ {s} {b} {g} → {!!})
