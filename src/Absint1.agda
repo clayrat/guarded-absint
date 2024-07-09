@@ -10,6 +10,7 @@ open import Data.Nat.Order.Inductive
 open import Data.String
 open import Data.List
 open import Data.Dec renaming (elim to elimᵈ)
+open import Data.Reflects
 open import Data.Sum
 
 open import Lang
@@ -57,7 +58,7 @@ module AIntSem
             → ia m g (to-pred v1 (ANum x1))
             → ia m g (to-pred v2 (ANum x2))
             → ia m g (to-pred (add v1 v2) (ANum (x1 + x2))))
-  (subst-to-pred : ∀ {v x e e'} → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
+  (subst-to-pred : ∀ {v x e e'} → qsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
   where
 
   open State.State A top
@@ -123,23 +124,23 @@ module AIntSem
 data OE : 𝒰 where
   Even Odd OETop : OE
 
-OE-fromN : ℕ → OE
-OE-fromN n = if odd n then Odd else Even
+oe-fromN : ℕ → OE
+oe-fromN n = if odd n then Odd else Even
 
-addOE : OE → OE → OE
-addOE Even  Even  = Even
-addOE Even  Odd   = Odd
-addOE Odd   Even  = Odd
-addOE Odd   Odd   = Even
-addOE _     _     = OETop
+oe-add : OE → OE → OE
+oe-add Even  Even  = Even
+oe-add Even  Odd   = Odd
+oe-add Odd   Even  = Odd
+oe-add Odd   Odd   = Even
+oe-add _     _     = OETop
 
-OE-to-pred : OE → AExpr → Assert
-OE-to-pred Even  e = QPred "even" (e ∷ [])
-OE-to-pred Odd   e = QPred "odd" (e ∷ [])
-OE-to-pred OETop e = QTrue
+oe-to-pred : OE → AExpr → Assert
+oe-to-pred Even  e = QPred "even" (e ∷ [])
+oe-to-pred Odd   e = QPred "odd" (e ∷ [])
+oe-to-pred OETop e = QTrue
 
 open module OEState = State.State OE OETop
-open module OEInt = AInt OE OETop OE-fromN addOE OE-to-pred
+open module OEInt = AInt OE OETop oe-fromN oe-add oe-to-pred
 
 testprog : Instr
 testprog = Seq (Assign "x" (APlus (AVar "x") (AVar "y")))
@@ -160,10 +161,67 @@ testres = AnSeq (AnPre (QConj (QPred "even" (AVar "x" ∷ []))
 testab1 : ab1 testprog testst ＝ testres
 testab1 = refl
 
-OE-top-sem : ∀ e → OE-to-pred OETop e ＝ QTrue
-OE-top-sem e = refl
+-- properties
 
-OE-subst-to-pred : ∀ v x e e' → xsubst x e' (OE-to-pred v e) ＝ OE-to-pred v (asubst x e' e)
-OE-subst-to-pred Even  x e e' = refl
-OE-subst-to-pred Odd   x e e' = refl
-OE-subst-to-pred OETop x e e' = refl
+oe-m-aux : List ℕ → Bool → 𝒰
+oe-m-aux (x ∷ []) true  = is-true (even x)
+oe-m-aux (x ∷ []) false = is-true (odd x)
+oe-m-aux _        _     = ⊥
+
+oe-m : String → List ℕ → 𝒰
+oe-m s l = if ⌊ s ≟ "even" ⌋ then oe-m-aux l true else if ⌊ s ≟ "odd" ⌋ then oe-m-aux l false else ⊥
+
+oe-top-sem : ∀ {e} → oe-to-pred OETop e ＝ QTrue
+oe-top-sem = refl
+
+oe-fromN-sem : ∀ {g x} → ia oe-m g (oe-to-pred (oe-fromN x) (ANum x))
+oe-fromN-sem {g} {x} with odd x | recall odd x
+... | true  | ⟪ eq ⟫ = is-true≃is-trueₚ ⁻¹ $ eq
+... | false | ⟪ eq ⟫ = is-true≃is-trueₚ ⁻¹ $ ap not eq
+
+oe-to-pred-sem : ∀ {g v e} → ia oe-m g (oe-to-pred v e) ＝ ia oe-m g (oe-to-pred v (ANum (af g e)))
+oe-to-pred-sem {v = Even}  = refl
+oe-to-pred-sem {v = Odd}   = refl
+oe-to-pred-sem {v = OETop} = refl
+
+oe-add-sem : ∀ {g v1 v2 x1 x2}
+            → ia oe-m g (oe-to-pred v1 (ANum x1))
+            → ia oe-m g (oe-to-pred v2 (ANum x2))
+            → ia oe-m g (oe-to-pred (oe-add v1 v2) (ANum (x1 + x2)))
+oe-add-sem {v1 = Even}  {v2 = Even}  {x1} {x2} ia1 ia2 =
+  subst (is-true ∘ not) (odd-+ x1 x2 ⁻¹) $
+  subst is-true (not-xor-l (odd x1) (odd x2) ⁻¹) $
+  reflects-true (reflects-xor {x = not (odd x1)} {y = odd x2}) $
+  not-invol (odd x1) ∙ not-inj ((is-true≃is-trueₚ $ ia1) ∙ (is-true≃is-trueₚ $ ia2) ⁻¹)
+oe-add-sem {v1 = Even}  {v2 = Odd}   {x1} {x2} ia1 ia2 =
+  subst (is-true) (odd-+ x1 x2 ⁻¹) $
+  reflects-true (reflects-xor {x = odd x1} {y = odd x2}) $
+  (is-true≃is-trueₚ $ ia1) ∙ (is-true≃is-trueₚ $ ia2) ⁻¹
+oe-add-sem {v1 = Even}  {v2 = OETop}           ia1 ia2 = tt
+oe-add-sem {v1 = Odd}   {v2 = Even}  {x1} {x2} ia1 ia2 =
+  subst (is-true) (odd-+ x1 x2 ⁻¹) $
+  reflects-true (reflects-xor {x = odd x1} {y = odd x2}) $
+  ap not (is-true≃is-trueₚ $ ia1) ∙ not-inj ((is-true≃is-trueₚ $ ia2) ⁻¹)
+oe-add-sem {v1 = Odd}   {v2 = Odd}   {x1} {x2} ia1 ia2 =
+  subst (is-true ∘ not) (odd-+ x1 x2 ⁻¹) $
+  subst is-true (not-xor-l (odd x1) (odd x2) ⁻¹) $
+  reflects-true (reflects-xor {x = not (odd x1)} {y = odd x2}) $
+  not-invol (odd x1) ∙ (is-true≃is-trueₚ $ ia1) ∙ (is-true≃is-trueₚ $ ia2) ⁻¹
+oe-add-sem {v1 = Odd}   {v2 = OETop}           ia1 ia2 = tt
+oe-add-sem {v1 = OETop} {v2 = Even}            ia1 ia2 = tt
+oe-add-sem {v1 = OETop} {v2 = Odd}             ia1 ia2 = tt
+oe-add-sem {v1 = OETop} {v2 = OETop}           ia1 ia2 = tt
+
+oe-subst-to-pred : ∀ {v x e e'}
+                 → qsubst x e' (oe-to-pred v e) ＝ oe-to-pred v (asubst x e' e)
+oe-subst-to-pred {v = Even}  = refl
+oe-subst-to-pred {v = Odd}   = refl
+oe-subst-to-pred {v = OETop} = refl
+
+open module OEIntSem = AIntSem OE OETop oe-fromN oe-add oe-to-pred
+                               oe-m
+                               (λ {e} → oe-top-sem {e})
+                               (λ {g} {x} → oe-fromN-sem {g} {x})
+                               (λ {g} {v} {e} → oe-to-pred-sem {g} {v} {e})
+                               (λ {g} {v1} {v2} {x1} {x2} → oe-add-sem {g} {v1} {v2} {x1} {x2})
+                               (λ {v} {x} {e} {e'} → oe-subst-to-pred {v} {x} {e} {e'})

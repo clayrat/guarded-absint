@@ -86,17 +86,17 @@ asubst x s   (APlus e₁ e₂) = APlus (asubst x s e₁) (asubst x s e₂)
 bsubst : String → AExpr → BExpr → BExpr
 bsubst x s (BLt e₁ e₂) = BLt (asubst x s e₁) (asubst x s e₂)
 
-xsubst : String → AExpr → Assert → Assert
-xsubst x s (QPred p l)   = QPred p (map (asubst x s) l)
-xsubst x s (QB b)        = QB (bsubst x s b)
-xsubst x s (QConj a₁ a₂) = QConj (xsubst x s a₁) (xsubst x s a₂)
-xsubst x s (QNot a)      = QNot (xsubst x s a)
-xsubst x s  QTrue        = QTrue
-xsubst x s  QFalse       = QFalse
+qsubst : String → AExpr → Assert → Assert
+qsubst x s (QPred p l)   = QPred p (map (asubst x s) l)
+qsubst x s (QB b)        = QB (bsubst x s b)
+qsubst x s (QConj a₁ a₂) = QConj (qsubst x s a₁) (qsubst x s a₂)
+qsubst x s (QNot a)      = QNot (qsubst x s a)
+qsubst x s  QTrue        = QTrue
+qsubst x s  QFalse       = QFalse
 
 pc : AnInstr → Assert → Assert
 pc (AnPre a _)     _    = a
-pc (AnAssign x e)  post = xsubst x e post
+pc (AnAssign x e)  post = qsubst x e post
 pc (AnSeq i₁ i₂)   post = pc i₁ (pc i₂ post)
 pc (AnWhile _ a _) _    = a
 
@@ -154,7 +154,7 @@ subst-sound-l (h ∷ t) = ap² _∷_ (subst-sound-a h) (subst-sound-l t)
 
 subst-sound : {m : String → List ℕ → 𝒰} {g : String → ℕ} {e' : AExpr} {x : String}
             → (a : Assert)
-            → ia m g (xsubst x e' a) ＝ ia m (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y) a
+            → ia m g (qsubst x e' a) ＝ ia m (λ y → if ⌊ x ≟ y ⌋ then af g e' else g y) a
 subst-sound {m} (QPred s l)   = ap (m s) (subst-sound-l l)
 subst-sound     (QB b)        = ap is-true (subst-sound-b b)
 subst-sound     (QConj a₁ a₂) = ap² _×_ (subst-sound a₁) (subst-sound a₂)

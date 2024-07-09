@@ -56,60 +56,60 @@ module AIntCoreSem
             → ia m g (to-pred v1 (ANum x1))
             → ia m g (to-pred v2 (ANum x2))
             → ia m g (to-pred (add v1 v2) (ANum (x1 + x2))))
-  (subst-to-pred : ∀ {v x e e'} → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
+  (subst-to-pred : ∀ {v x e e'} → qsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
   where
 
   open State.State A top
   open AIntCore A top fromN add to-pred
 
-  xsubst-no-occur : ∀ {x l e} s
+  qsubst-no-occur : ∀ {x l e} s
                   → is-true (no-dups s (x ∷ l))
-                  → xsubst x e (s→a s) ＝ s→a s
-  xsubst-no-occur             []            _ = refl
-  xsubst-no-occur {x} {l} {e} ((y , v) ∷ s)   =
+                  → qsubst x e (s→a s) ＝ s→a s
+  qsubst-no-occur             []            _ = refl
+  qsubst-no-occur {x} {l} {e} ((y , v) ∷ s)   =
     elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem y l) and no-dups s (y ∷ x ∷ l))
-                   → QConj (xsubst x e (to-pred v (AVar y))) (xsubst x e (s→a s)) ＝ QConj (to-pred v (AVar y)) (s→a s)}
+                   → QConj (qsubst x e (to-pred v (AVar y))) (qsubst x e (s→a s)) ＝ QConj (to-pred v (AVar y)) (s→a s)}
       (λ p c → absurd c)
-      (λ ¬p h → let h' = and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ x ∷ l)} $ is-true-≃ $ h in
+      (λ ¬p h → let h' = and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ x ∷ l)} $ is-true≃is-trueₚ $ h in
                 ap² QConj
                   (  subst-to-pred
                    ∙ ap (to-pred v) (elimᵈ {C = λ q → (if ⌊ q ⌋ then e else AVar y) ＝ AVar y}
                                            (λ p → absurd (¬p p))
                                            (λ _ → refl)
                                            (x ≟ y)))
-                  (xsubst-no-occur {l = y ∷ l} s (is-true-≃ ⁻¹ $ subst is-trueₚ (no-dups-transpose-head {s = s}) (h' .snd))))
+                  (qsubst-no-occur {l = y ∷ l} s (is-true≃is-trueₚ ⁻¹ $ subst is-trueₚ (no-dups-transpose-head {s = s}) (h' .snd))))
       (x ≟ y)
 
   subst-no-dups : ∀ {g v x e l} s
                 → is-true (no-dups s l)
                 → ia m g (s→a s)
                 → ia m g (to-pred v (ANum (af g e)))
-                → ia m g (xsubst x e (s→a (stupd x v s)))
+                → ia m g (qsubst x e (s→a (stupd x v s)))
   subst-no-dups {g} {v} {x} {e}     []            h1 h2 h3 =
       subst (ia m g) (subst-to-pred ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar x))}
                                                (λ _ → transport (to-pred-sem ⁻¹) h3)
                                                (λ ¬p → absurd (¬p refl))
                                                (x ≟ x)) , tt
   subst-no-dups {g} {v} {x} {e} {l} ((y , w) ∷ s) h1 (h2 , h3) h4 =
-    let h5 = (and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true-≃ $ h1) .snd in
-    elimᵈ {C = λ q → ia m g (xsubst x e (s→a (if ⌊ q ⌋ then (y , v) ∷ s else (y , w) ∷ stupd x v s)))}
+    let h5 = (and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true≃is-trueₚ $ h1) .snd in
+    elimᵈ {C = λ q → ia m g (qsubst x e (s→a (if ⌊ q ⌋ then (y , v) ∷ s else (y , w) ∷ stupd x v s)))}
       (λ p  →   subst (ia m g) (subst-to-pred ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred v (if ⌊ q ⌋ then e else AVar y))}
                                                          (λ _ → transport (to-pred-sem ⁻¹) h4)
                                                          (λ ¬p → absurd (¬p p))
                                                          (x ≟ y))
-              , subst (ia m g) (xsubst-no-occur s (is-true-≃ ⁻¹ $ subst (λ q → is-trueₚ (no-dups s (q ∷ l))) (p ⁻¹) h5) ⁻¹) h3)
+              , subst (ia m g) (qsubst-no-occur s (is-true≃is-trueₚ ⁻¹ $ subst (λ q → is-trueₚ (no-dups s (q ∷ l))) (p ⁻¹) h5) ⁻¹) h3)
       (λ ¬p →   subst (ia m g) (subst-to-pred ⁻¹) (elimᵈ {C = λ q → ia m g (to-pred w (if ⌊ q ⌋ then e else AVar y))}
                                                          (λ p → absurd (¬p p))
                                                          (λ _ → h2)
                                                          (x ≟ y))
-              , subst-no-dups s (is-true-≃ ⁻¹ $ h5) h3 h4)
+              , subst-no-dups s (is-true≃is-trueₚ ⁻¹ $ h5) h3 h4)
       (x ≟ y)
 
   subst-consistent : ∀ {s g v x e}
                    → consistent s
                    → ia m g (s→a s)
                    → ia m g (to-pred v (ANum (af g e)))
-                   → ia m g (xsubst x e (s→a (stupd x v s)))
+                   → ia m g (qsubst x e (s→a (stupd x v s)))
   subst-consistent {s} = subst-no-dups s
 
   lookup-sem : ∀ {g} s → ia m g (s→a s)
@@ -135,14 +135,14 @@ module AIntCoreSem
   lookup-sem2         []            h p = tt
   lookup-sem2 {g} {l} ((x , v) ∷ s) h p =
     let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $
-             is-true-≃ $ h in
+             is-true≃is-trueₚ $ h in
       elimᵈ {C = λ q → (is-true (not (mem x l)) →
                         ia m g (to-pred (if ⌊ q ⌋ then v else stlup s x) (AVar x))) →
                  ia m g (to-pred v (AVar x)) }
-            (λ _ f → f (is-true-≃ ⁻¹ $ hh .fst))
+            (λ _ f → f (is-true≃is-trueₚ ⁻¹ $ hh .fst))
             (λ ¬p → absurd (¬p refl))
             (x ≟ x) (p x)
-    , lookup-sem2 {l = x ∷ l} s (is-true-≃ ⁻¹ $ hh .snd)
+    , lookup-sem2 {l = x ∷ l} s (is-true≃is-trueₚ ⁻¹ $ hh .snd)
         λ y my → elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem y l)) →
                                    ia m g (to-pred (stlup s y) (AVar y)) }
                        (λ hp my′  → absurd my′)
@@ -169,10 +169,10 @@ module AIntCoreSem
                    → ia m g (s→a (if ⌊ q ⌋ then (z , e) ∷ s else (z , v) ∷ stupd x e s)) }
           (λ p  ias iax →   (subst (λ q → ia m g (to-pred e (AVar q))) p iax)
                           , (lookup-sem2 {l = z ∷ l} s
-                             (is-true-≃ ⁻¹ $ (and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true-≃ $ cs) .snd)
+                             (is-true≃is-trueₚ ⁻¹ $ (and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true≃is-trueₚ $ cs) .snd)
                              λ y h →
                                let hh = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
-                                        subst is-trueₚ (not-or ⌊ z ≟ y ⌋ (mem y l)) (is-true-≃ $ h) in
+                                        subst is-trueₚ (not-or ⌊ z ≟ y ⌋ (mem y l)) (is-true≃is-trueₚ $ h) in
                                elimᵈ {C = λ q → (y ≠ x →
                                                  is-true (not (mem y l)) →
                                                  ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
@@ -181,19 +181,19 @@ module AIntCoreSem
                                                              (λ _     → false≠true)
                                                              (λ ¬e′ _ → ¬e′ (e ⁻¹))
                                                              (z ≟ y) (hh .fst)))
-                                     (λ ¬e f → f (λ p′ → ¬e (p′ ∙ p)) (is-true-≃ ⁻¹ $ hh .snd))
+                                     (λ ¬e f → f (λ p′ → ¬e (p′ ∙ p)) (is-true≃is-trueₚ ⁻¹ $ hh .snd))
                                      (y ≟ z)
                                      (ias {y})))
-          (λ ¬p ias iax → let hh = and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true-≃ $ cs in
+          (λ ¬p ias iax → let hh = and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ is-true≃is-trueₚ $ cs in
                             elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s z) (AVar z))
                                            → ia m g (to-pred v (AVar z))}
                                   (λ _  → id)
                                   (λ ¬c → absurd (¬c refl))
                                   (z ≟ z)
-                                  (ias (λ w → ¬p (w ⁻¹)) (is-true-≃ ⁻¹ $ hh .fst))
-                          , a-upd-ia-all {l = z ∷ l} s (is-true-≃ ⁻¹ $ hh .snd)
+                                  (ias (λ w → ¬p (w ⁻¹)) (is-true≃is-trueₚ ⁻¹ $ hh .fst))
+                          , a-upd-ia-all {l = z ∷ l} s (is-true≃is-trueₚ ⁻¹ $ hh .snd)
                                (λ {y} ne h → let h′ = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
-                                                      is-true-≃ $ subst is-true (not-or ⌊ z ≟ y ⌋ (mem y l)) h in
+                                                      is-true≃is-trueₚ $ subst is-true (not-or ⌊ z ≟ y ⌋ (mem y l)) h in
                                              elimᵈ {C = λ q → ia m g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))
                                                             → ia m g (to-pred (stlup s y) (AVar y))}
                                                    (λ yz → absurd (elimᵈ {C = λ q → is-trueₚ (not ⌊ q ⌋) → ⊥}
@@ -201,7 +201,7 @@ module AIntCoreSem
                                                                          (z ≟ y) (h′ .fst)))
                                                    (λ ¬yz → id)
                                                    (y ≟ z)
-                                                   (ias ne (is-true-≃ ⁻¹ $ h′ .snd)))
+                                                   (ias ne (is-true≃is-trueₚ ⁻¹ $ h′ .snd)))
                                iax)
           (x ≟ z)
 

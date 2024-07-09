@@ -24,8 +24,8 @@ mem-transpose {z}              (h ∷ t) = ap (⌊ h ≟ z ⌋ or_) (mem-transpo
 
 mem-more : ∀ {l x a} → is-true (not (mem x (a ∷ l))) → is-true (not (mem x l))
 mem-more {l} {x} {a} nm =
-  is-true-≃ ⁻¹ $ (and-true-≃ {x = not ⌊ a ≟ x ⌋} {y = not (mem x l)} $
-                 is-true-≃ $ subst is-true (not-or ⌊ a ≟ x ⌋ (mem x l)) nm) .snd
+  is-true≃is-trueₚ ⁻¹ $ (and-true-≃ {x = not ⌊ a ≟ x ⌋} {y = not (mem x l)} $
+  is-true≃is-trueₚ $ subst is-true (not-or ⌊ a ≟ x ⌋ (mem x l)) nm) .snd
 
 --mem-more     []      nm = tt
 --mem-more {x} (y ∷ l) nm = {!!}
@@ -80,16 +80,16 @@ module State
   no-dups-update {l} {x} {v} ((y , w) ∷ s) h1 h2 =
     elimᵈ {C = λ q → is-true (no-dups (if ⌊ q ⌋ then (y , v) ∷ s else (y , w) ∷ stupd x v s) l)}
           (λ p  → h2)
-          (λ ¬p → let h34 = and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true-≃ $ h2 in
-                  is-true-≃ ⁻¹ $
+          (λ ¬p → let h34 = and-true-≃ {x = not (mem y l)} {y = no-dups s (y ∷ l)} $ is-true≃is-trueₚ $ h2 in
+                  is-true≃is-trueₚ ⁻¹ $
                   and-true-≃ {x = not (mem y l)} {y = no-dups (stupd x v s) (y ∷ l)} ⁻¹ $
                   ( h34 .fst
-                  , (is-true-≃ $ no-dups-update s
+                  , (is-true≃is-trueₚ $ no-dups-update s
                        (elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem x l))}
                               (λ p′ → ¬p (p′ ⁻¹))
                               (λ _ → h1)
                               (y ≟ x))
-                       (is-true-≃ ⁻¹ $ h34 .snd))))
+                       (is-true≃is-trueₚ ⁻¹ $ h34 .snd))))
           (x ≟ y)
 
   consistent-update : ∀ {s x v} → consistent s → consistent (stupd x v s)
@@ -98,10 +98,10 @@ module State
   no-dups-more-excluded : ∀ {l a} s → is-true (no-dups s (a ∷ l)) → is-true (no-dups s l)
   no-dups-more-excluded         []            h = tt
   no-dups-more-excluded {l} {a} ((x , v) ∷ s) h =
-    let hh = and-true-≃ {x = not (⌊ a ≟ x ⌋ or mem x l)} {y = no-dups s (x ∷ a ∷ l)} $ is-true-≃ $ h in
-    is-true-≃ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} ⁻¹ $
+    let hh = and-true-≃ {x = not (⌊ a ≟ x ⌋ or mem x l)} {y = no-dups s (x ∷ a ∷ l)} $ is-true≃is-trueₚ $ h in
+    is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} ⁻¹ $
       (and-true-≃ {x = not ⌊ a ≟ x ⌋} {y = not (mem x l)} $ subst is-trueₚ (not-or ⌊ a ≟ x ⌋ (mem x l)) (hh .fst)) .snd
-    , (is-true-≃ $ no-dups-more-excluded s (is-true-≃ ⁻¹ $ subst is-trueₚ (no-dups-transpose-head {s = s}) (hh .snd)))
+    , (is-true≃is-trueₚ $ no-dups-more-excluded s (is-true≃is-trueₚ ⁻¹ $ subst is-trueₚ (no-dups-transpose-head {s = s}) (hh .snd)))
 
   consistent-tail : ∀ {s a} → consistent (a ∷ s) → consistent s
   consistent-tail {s} = no-dups-more-excluded s

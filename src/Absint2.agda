@@ -110,7 +110,7 @@ module AInt2Sem
   (m : String → List ℕ → 𝒰)
 
   (top-sem : ∀ {e} → to-pred top e ＝ QTrue)
-  (subst-to-pred : ∀ {v x e e'} → xsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
+  (subst-to-pred : ∀ {v x e e'} → qsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
   (fromN-sem : ∀ {g x} → ia m g (to-pred (fromN x) (ANum x)))
   (to-pred-sem : ∀ {g v e} → ia m g (to-pred v e) ＝ ia m g (to-pred v (ANum (af g e))))
   (a-add-sem : ∀ {g v1 v2 x1 x2}
@@ -364,10 +364,10 @@ module AInt2Sem
                    → ia m g (s→a s)
   s-stable-correct          []            ss ias' = tt
   s-stable-correct {g} {s'} ((x , v) ∷ s) ss ias' =
-    let hh = and-true-≃ {x = thinner (stlup s' x) v} {y = s-stable s s'} $ is-true-≃ $ ss in
-      thinner-sem (is-true-≃ ⁻¹ $ hh .fst)
+    let hh = and-true-≃ {x = thinner (stlup s' x) v} {y = s-stable s s'} $ is-true≃is-trueₚ $ ss in
+      thinner-sem (is-true≃is-trueₚ ⁻¹ $ hh .fst)
          (transport (to-pred-sem ⁻¹) (lookup-sem s' ias'))
-    , s-stable-correct s (is-true-≃ ⁻¹ $  hh .snd) ias'
+    , s-stable-correct s (is-true≃is-trueₚ ⁻¹ $  hh .snd) ias'
 
   is-inv-correct : ∀ {ab b g s s' ai} s2
                  → is-true (is-inv ab s b)
@@ -390,7 +390,7 @@ module AInt2Sem
                      → ia m g (s→a (find-inv ab b init s i n))
     find-inv-correct {ab} {b} {g} {i} {init} {s} {s'} {s2} n ql qab ias2 with is-inv ab (step2 ab b init s (choose-1 s i)) b | recall (is-inv ab (step2 ab b init s (choose-1 s i))) b
     ... | false | ⟪ _ ⟫  = find-inv-aux-correct n ql qab ias2
-    ... | true  | ⟪ eq ⟫ = is-inv-correct {ab = ab} s2 (is-true-≃ ⁻¹ $ eq) ql qab ias2
+    ... | true  | ⟪ eq ⟫ = is-inv-correct {ab = ab} s2 (is-true≃is-trueₚ ⁻¹ $ eq) ql qab ias2
 
     find-inv-aux-correct : ∀ {ab b g i init s s′ s″ s2 ai} n
                          → learn-from-success (find-inv-aux ab b init s s′ i n) b ＝ just s″
@@ -536,12 +536,12 @@ minᵇ-l {x} {y} | true  | _      = reflects-true (≤-reflects x x) ≤-refl
 minᵇ-r : ∀ {x y} → is-true (minᵇ x y ≤ᵇ y)
 minᵇ-r {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
 minᵇ-r {x} {y} | false | _      = reflects-true (≤-reflects y y) ≤-refl
-minᵇ-r {x} {y} | true  | ⟪ eq ⟫ = is-true-≃ ⁻¹ $ eq
+minᵇ-r {x} {y} | true  | ⟪ eq ⟫ = is-true≃is-trueₚ ⁻¹ $ eq
 
 maxᵇ-l : ∀ {x y} → is-true (x ≤ᵇ maxᵇ x y)
 maxᵇ-l {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
 maxᵇ-l {x} {y} | false | _      = reflects-true (≤-reflects x x) ≤-refl
-maxᵇ-l {x} {y} | true  | ⟪ eq ⟫ = is-true-≃ ⁻¹ $ eq
+maxᵇ-l {x} {y} | true  | ⟪ eq ⟫ = is-true≃is-trueₚ ⁻¹ $ eq
 
 maxᵇ-r : ∀ {x y} → is-true (y ≤ᵇ maxᵇ x y)
 maxᵇ-r {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
@@ -730,7 +730,7 @@ i-to-pred-sem {v = Below x}     = refl
 i-to-pred-sem {v = Between x y} = refl
 i-to-pred-sem {v = AllN}        = refl
 
-i-subst-to-pred : ∀ {v x e e'} → xsubst x e' (i-to-pred v e) ＝ i-to-pred v (asubst x e' e)
+i-subst-to-pred : ∀ {v x e e'} → qsubst x e' (i-to-pred v e) ＝ i-to-pred v (asubst x e' e)
 i-subst-to-pred {v = Above x}     = refl
 i-subst-to-pred {v = Below x}     = refl
 i-subst-to-pred {v = Between x y} = refl
@@ -813,8 +813,8 @@ i-join-thinner-1 {a = Below _}     {b = AllN}        = tt
 i-join-thinner-1 {a = Between x y} {b = Above z}     = minᵇ-l {x = x} {y = z}
 i-join-thinner-1 {a = Between x y} {b = Below z}     = maxᵇ-l {x = y} {y = z}
 i-join-thinner-1 {a = Between x y} {b = Between z w} =
-  is-true-≃ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ x} {y = y ≤ᵇ maxᵇ y w} ⁻¹ $
-  (is-true-≃ $ minᵇ-l {x = x} {y = z}) , (is-true-≃ $ maxᵇ-l {x = y} {y = w})
+  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ x} {y = y ≤ᵇ maxᵇ y w} ⁻¹ $
+  (is-true≃is-trueₚ $ minᵇ-l {x = x} {y = z}) , (is-true≃is-trueₚ $ maxᵇ-l {x = y} {y = w})
 i-join-thinner-1 {a = Between _ _} {b = AllN}        = tt
 i-join-thinner-1 {a = AllN}        {b = Above _}     = tt
 i-join-thinner-1 {a = AllN}        {b = Below _}     = tt
@@ -833,8 +833,8 @@ i-join-thinner-2 {a = Below _}     {b = AllN}        = tt
 i-join-thinner-2 {a = Between x y} {b = Above z}     = minᵇ-r {x = x} {y = z}
 i-join-thinner-2 {a = Between x y} {b = Below z}     = maxᵇ-r {x = y} {y = z}
 i-join-thinner-2 {a = Between x y} {b = Between z w} =
-  is-true-≃ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ z} {y = w ≤ᵇ maxᵇ y w} ⁻¹ $
-  (is-true-≃ $ minᵇ-r {x = x} {y = z}) , (is-true-≃ $ maxᵇ-r {x = y} {y = w})
+  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ z} {y = w ≤ᵇ maxᵇ y w} ⁻¹ $
+  (is-true≃is-trueₚ $ minᵇ-r {x = x} {y = z}) , (is-true≃is-trueₚ $ maxᵇ-r {x = y} {y = w})
 i-join-thinner-2 {a = Between _ _} {b = AllN}        = tt
 i-join-thinner-2 {a = AllN}        {b = Above _}     = tt
 i-join-thinner-2 {a = AllN}        {b = Below _}     = tt
@@ -859,9 +859,9 @@ i-thinner-sem {a1 = AllN}        {a2 = Below x}     h  ia1         = absurd h
 i-thinner-sem {a1 = Above x}     {a2 = Between y z} h  ia1         = absurd h
 i-thinner-sem {a1 = Below x}     {a2 = Between y z} h  ia1         = absurd h
 i-thinner-sem {a1 = Between x y} {a2 = Between z w} h  (iax , iay) =
-  let hh = and-true-≃ {x = z ≤ᵇ x} {y = y ≤ᵇ w} $ is-true-≃ $ h in
-    ≤-trans (true-reflects (≤-reflects z x) (is-true-≃ ⁻¹ $ hh .fst)) iax
-  , ≤-trans iay (true-reflects (≤-reflects y w) (is-true-≃ ⁻¹ $ hh .snd))
+  let hh = and-true-≃ {x = z ≤ᵇ x} {y = y ≤ᵇ w} $ is-true≃is-trueₚ $ h in
+    ≤-trans (true-reflects (≤-reflects z x) (is-true≃is-trueₚ ⁻¹ $ hh .fst)) iax
+  , ≤-trans iay (true-reflects (≤-reflects y w) (is-true≃is-trueₚ ⁻¹ $ hh .snd))
 i-thinner-sem {a1 = AllN}        {a2 = Between x y} h  ia1         = absurd h
 i-thinner-sem {a1 = Above x}     {a2 = AllN}        tt ia1         = tt
 i-thinner-sem {a1 = Below x}     {a2 = AllN}        h  ia1         = tt
@@ -873,9 +873,9 @@ open-intervals-no-dups : ∀ {s' l} s
                        → is-true (no-dups (open-intervals s s') l)
 open-intervals-no-dups          []            h = tt
 open-intervals-no-dups {s'} {l} ((x , v) ∷ s) h =
-  let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $ is-true-≃ $ h in
-  is-true-≃ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups (open-intervals s s') (x ∷ l)} ⁻¹ $
-  (hh .fst) , (is-true-≃ $ open-intervals-no-dups {s' = s'} s (is-true-≃ ⁻¹ $ hh .snd))
+  let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $ is-true≃is-trueₚ $ h in
+  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups (open-intervals s s') (x ∷ l)} ⁻¹ $
+  (hh .fst) , (is-true≃is-trueₚ $ open-intervals-no-dups {s' = s'} s (is-true≃is-trueₚ ⁻¹ $ hh .snd))
 
 i-over-approx-consistent : ∀ {n s s'}
                          → consistent s → consistent s'
