@@ -7,6 +7,7 @@ open import Data.Bool
 open import Data.Nat
 open import Data.Nat.Two
 open import Data.Nat.Order.Inductive
+open import Data.Nat.Order.Minmax
 open import Data.String
 open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
 open import Data.List
@@ -519,60 +520,13 @@ open module IInt = AIntCore Interval AllN i-fromN i-add i-to-pred
 
 -- TODO upstream
 
-minᵇ : ℕ → ℕ → ℕ
-minᵇ x y = if x ≤ᵇ y then x else y
-
-maxᵇ : ℕ → ℕ → ℕ
-maxᵇ x y = if x ≤ᵇ y then y else x
-
-minᵇ-l : ∀ {x y} → is-true (minᵇ x y ≤ᵇ x)
-minᵇ-l {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
-minᵇ-l {x} {y} | false | ⟪ eq ⟫ =
-  reflects-true (≤-reflects y x) $
-  <-weaken y x $
-  <≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt)
-minᵇ-l {x} {y} | true  | _      = reflects-true (≤-reflects x x) ≤-refl
-
-minᵇ-r : ∀ {x y} → is-true (minᵇ x y ≤ᵇ y)
-minᵇ-r {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
-minᵇ-r {x} {y} | false | _      = reflects-true (≤-reflects y y) ≤-refl
-minᵇ-r {x} {y} | true  | ⟪ eq ⟫ = is-true≃is-trueₚ ⁻¹ $ eq
-
-maxᵇ-l : ∀ {x y} → is-true (x ≤ᵇ maxᵇ x y)
-maxᵇ-l {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
-maxᵇ-l {x} {y} | false | _      = reflects-true (≤-reflects x x) ≤-refl
-maxᵇ-l {x} {y} | true  | ⟪ eq ⟫ = is-true≃is-trueₚ ⁻¹ $ eq
-
-maxᵇ-r : ∀ {x y} → is-true (y ≤ᵇ maxᵇ x y)
-maxᵇ-r {x} {y} with x ≤ᵇ y | recall (x ≤ᵇ_) y
-maxᵇ-r {x} {y} | false | ⟪ eq ⟫ =
-  reflects-true (≤-reflects y x) $
-  <-weaken y x $
-  <≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt)
-maxᵇ-r {x} {y} | true  | _      = reflects-true (≤-reflects y y) ≤-refl
-
-≤ᵇ-minᵇ : ∀ {x y z} → (x ≤ᵇ minᵇ y z) ＝ (x ≤ᵇ y) and (x ≤ᵇ z)
-≤ᵇ-minᵇ {x} {y} {z} with y ≤ᵇ z | recall (y ≤ᵇ_) z
-≤ᵇ-minᵇ {x} {y} {z} | false | ⟪ eqyz ⟫ with x ≤ᵇ z | recall (x ≤ᵇ_) z
-≤ᵇ-minᵇ {x} {y} {z} | false | ⟪ eqyz ⟫ | false | ⟪ eqxz ⟫ = and-absorb-r (x ≤ᵇ y) ⁻¹
-≤ᵇ-minᵇ {x} {y} {z} | false | ⟪ eqyz ⟫ | true  | ⟪ eqxz ⟫ =
-  (and-id-r (x ≤ᵇ y) ∙ (is-true≃is-trueₚ $ reflects-true (≤-reflects x y) $
-                        ≤-trans (true-reflects (≤-reflects x z) (is-true≃is-trueₚ  ⁻¹ $ eqxz))
-                                (<-weaken z y (<≃≱ ⁻¹ $ false-reflects (≤-reflects y z) (subst (is-true ∘ not) (eqyz ⁻¹) tt))))) ⁻¹
-≤ᵇ-minᵇ {x} {y} {z} | true  | ⟪ eqyz ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
-≤ᵇ-minᵇ {x} {y} {z} | true  | ⟪ eqyz ⟫ | false | ⟪ eqxy ⟫ = refl
-≤ᵇ-minᵇ {x} {y} {z} | true  | ⟪ eqyz ⟫ | true  | ⟪ eqxy ⟫ =
-  (is-true≃is-trueₚ $ reflects-true (≤-reflects x z) $
-   ≤-trans (true-reflects (≤-reflects x y) (is-true≃is-trueₚ  ⁻¹ $ eqxy))
-           (true-reflects (≤-reflects y z) (is-true≃is-trueₚ  ⁻¹ $ eqyz))) ⁻¹
-
 i-learn-from-success-aux : State → String → Interval → Interval → Maybe State
 i-learn-from-success-aux s n (Below x)     (Above y)     = if x ≤ᵇ y then nothing
                                                                      else just (stupd n (Between y (pred x)) s)
 i-learn-from-success-aux s n (Below x)     (Below y)     = just (if x ≤ᵇ y then stupd n (Below (pred x)) s
                                                                            else s)
 i-learn-from-success-aux s n (Below x)     (Between y z) = if x ≤ᵇ y then nothing
-                                                                     else just (stupd n (Between y (minᵇ (pred x) z)) s)
+                                                                     else just (stupd n (Between y (min (pred x) z)) s)
 i-learn-from-success-aux s n (Below x)      AllN         = just (stupd n (Below (pred x)) s)
 i-learn-from-success-aux s n (Between _ y) (Above z)     = if y ≤ᵇ z then nothing
                                                                      else just (stupd n (Between z (pred y)) s)
@@ -611,13 +565,13 @@ i-learn-from-failure s (BLt (AVar n) e) = i-learn-from-failure-aux s n (a-af s e
 i-learn-from-failure s _                = just s
 
 i-join : Interval → Interval → Interval
-i-join (Above x)     (Above y)     = Above (minᵇ x y)
-i-join (Above x)     (Between y _) = Above (minᵇ x y)
-i-join (Below x)     (Below y)     = Below (maxᵇ x y)
-i-join (Below x)     (Between _ z) = Below (maxᵇ x z)
-i-join (Between x _) (Above z)     = Above (minᵇ x z)
-i-join (Between _ y) (Below z)     = Below (maxᵇ y z)
-i-join (Between x y) (Between z w) = Between (minᵇ x z) (maxᵇ y w)
+i-join (Above x)     (Above y)     = Above (min x y)
+i-join (Above x)     (Between y _) = Above (min x y)
+i-join (Below x)     (Below y)     = Below (max x y)
+i-join (Below x)     (Between _ z) = Below (max x z)
+i-join (Between x _) (Above z)     = Above (min x z)
+i-join (Between _ y) (Below z)     = Below (max y z)
+i-join (Between x y) (Between z w) = Between (min x z) (max y w)
 i-join _             _             = AllN
 
 i-thinner : Interval → Interval → Bool
@@ -657,6 +611,7 @@ open module IntervalInt = AInt2 Interval AllN i-add i-fromN i-to-pred
                                 i-join i-thinner i-over-approx
                                 i-choose-1 i-choose-2
 
+-- the program in the intro
 i-1 : Instr
 i-1 = While (BLt (AVar "x") (ANum 10))
             (Assign "x" (APlus (AVar "x") (ANum 1)))
@@ -664,21 +619,33 @@ i-1 = While (BLt (AVar "x") (ANum 10))
 s-1 : State
 s-1 = ("x" , i-fromN 0) ∷ []
 
-res-1 : AnInstr × Maybe State
-res-1 =   AnWhile (BLt (AVar "x") (ANum 10))
-                  (QConj
-                    (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
-                           (QPred "leq" (AVar "x" ∷ ANum 10 ∷ [])))
-                    QTrue)
+res-1-1 : AnInstr
+res-1-1 = AnWhile (BLt (AVar "x") (ANum 10))
+                    (QConj
+                      (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
+                             (QPred "leq" (AVar "x" ∷ ANum 10 ∷ [])))
+                      QTrue)
                   (AnPre (QConj
                            (QConj (QPred "leq" (ANum 0 ∷ AVar "x" ∷ []))
                                   (QPred "leq" (AVar "x" ∷ ANum 9 ∷ [])))
                            QTrue)
                          (AnAssign "x" (APlus (AVar "x") (ANum 1))))
-        , just (("x" , Between 10 10) ∷ [])
+
+res-1 : AnInstr × Maybe State
+res-1 = res-1-1 , just (("x" , Between 10 10) ∷ [])
 
 test-1 : ab2 i-1 s-1 ＝ res-1
 test-1 = refl
+
+i-2 : Instr
+i-2 = Seq (Assign "x" (ANum 0)) i-1
+
+res-2 : AnInstr × Maybe State
+res-2 = AnSeq (AnPre QTrue (AnAssign "x" (ANum 0))) res-1-1
+      , just (("x" , Between 10 10) ∷ [])
+
+test-2 : ab2 i-2 [] ＝ res-2
+test-2 = refl
 
 i-3 : Instr
 i-3 = While (BLt (AVar "x") (ANum 10))
@@ -816,19 +783,19 @@ i-over-approx-sem {n = zero}           ias = tt
 i-over-approx-sem {n = suc n} {s} {s'} ias = open-intervals-sem {s' = s'} s ias
 
 i-join-thinner-1 : ∀ {a b} → is-true (i-thinner a (i-join a b))
-i-join-thinner-1 {a = Above x}     {b = Above y}     = minᵇ-l {x = x} {y = y}
+i-join-thinner-1 {a = Above x}     {b = Above y}     = min-l {x = x} {y = y}
 i-join-thinner-1 {a = Above _}     {b = Below _}     = tt
-i-join-thinner-1 {a = Above x}     {b = Between y z} = minᵇ-l {x = x} {y = y}
+i-join-thinner-1 {a = Above x}     {b = Between y z} = min-l {x = x} {y = y}
 i-join-thinner-1 {a = Above _}     {b = AllN}        = tt
 i-join-thinner-1 {a = Below _}     {b = Above _}     = tt
-i-join-thinner-1 {a = Below x}     {b = Below y}     = maxᵇ-l {x = x} {y = y}
-i-join-thinner-1 {a = Below x}     {b = Between y z} = maxᵇ-l {x = x} {y = z}
+i-join-thinner-1 {a = Below x}     {b = Below y}     = max-l {x = x} {y = y}
+i-join-thinner-1 {a = Below x}     {b = Between y z} = max-l {x = x} {y = z}
 i-join-thinner-1 {a = Below _}     {b = AllN}        = tt
-i-join-thinner-1 {a = Between x y} {b = Above z}     = minᵇ-l {x = x} {y = z}
-i-join-thinner-1 {a = Between x y} {b = Below z}     = maxᵇ-l {x = y} {y = z}
+i-join-thinner-1 {a = Between x y} {b = Above z}     = min-l {x = x} {y = z}
+i-join-thinner-1 {a = Between x y} {b = Below z}     = max-l {x = y} {y = z}
 i-join-thinner-1 {a = Between x y} {b = Between z w} =
-  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ x} {y = y ≤ᵇ maxᵇ y w} ⁻¹ $
-  (is-true≃is-trueₚ $ minᵇ-l {x = x} {y = z}) , (is-true≃is-trueₚ $ maxᵇ-l {x = y} {y = w})
+  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = min x z ≤ᵇ x} {y = y ≤ᵇ max y w} ⁻¹ $
+  (is-true≃is-trueₚ $ min-l {x = x} {y = z}) , (is-true≃is-trueₚ $ max-l {x = y} {y = w})
 i-join-thinner-1 {a = Between _ _} {b = AllN}        = tt
 i-join-thinner-1 {a = AllN}        {b = Above _}     = tt
 i-join-thinner-1 {a = AllN}        {b = Below _}     = tt
@@ -836,19 +803,19 @@ i-join-thinner-1 {a = AllN}        {b = Between _ _} = tt
 i-join-thinner-1 {a = AllN}        {b = AllN}        = tt
 
 i-join-thinner-2 : ∀ {a b} → is-true (i-thinner b (i-join a b))
-i-join-thinner-2 {a = Above x}     {b = Above y}     = minᵇ-r {x = x} {y = y}
+i-join-thinner-2 {a = Above x}     {b = Above y}     = min-r {x = x} {y = y}
 i-join-thinner-2 {a = Above _}     {b = Below _}     = tt
-i-join-thinner-2 {a = Above x}     {b = Between y z} = minᵇ-r {x = x} {y = y}
+i-join-thinner-2 {a = Above x}     {b = Between y z} = min-r {x = x} {y = y}
 i-join-thinner-2 {a = Above _}     {b = AllN}        = tt
 i-join-thinner-2 {a = Below _}     {b = Above _}     = tt
-i-join-thinner-2 {a = Below x}     {b = Below y}     = maxᵇ-r {x = x} {y = y}
-i-join-thinner-2 {a = Below x}     {b = Between y z} = maxᵇ-r {x = x} {y = z}
+i-join-thinner-2 {a = Below x}     {b = Below y}     = max-r {x = x} {y = y}
+i-join-thinner-2 {a = Below x}     {b = Between y z} = max-r {x = x} {y = z}
 i-join-thinner-2 {a = Below _}     {b = AllN}        = tt
-i-join-thinner-2 {a = Between x y} {b = Above z}     = minᵇ-r {x = x} {y = z}
-i-join-thinner-2 {a = Between x y} {b = Below z}     = maxᵇ-r {x = y} {y = z}
+i-join-thinner-2 {a = Between x y} {b = Above z}     = min-r {x = x} {y = z}
+i-join-thinner-2 {a = Between x y} {b = Below z}     = max-r {x = y} {y = z}
 i-join-thinner-2 {a = Between x y} {b = Between z w} =
-  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = minᵇ x z ≤ᵇ z} {y = w ≤ᵇ maxᵇ y w} ⁻¹ $
-  (is-true≃is-trueₚ $ minᵇ-r {x = x} {y = z}) , (is-true≃is-trueₚ $ maxᵇ-r {x = y} {y = w})
+  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = min x z ≤ᵇ z} {y = w ≤ᵇ max y w} ⁻¹ $
+  (is-true≃is-trueₚ $ min-r {x = x} {y = z}) , (is-true≃is-trueₚ $ max-r {x = y} {y = w})
 i-join-thinner-2 {a = Between _ _} {b = AllN}        = tt
 i-join-thinner-2 {a = AllN}        {b = Above _}     = tt
 i-join-thinner-2 {a = AllN}        {b = Below _}     = tt
@@ -942,8 +909,8 @@ i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias gn<afge | Below x     | Betw
     in
   a-upd-ia-all' {s = s} cs (λ {y} ny → transport (i-to-pred-sem {v = stlup s y} ⁻¹) (lookup-sem s ias))
     ( y≤gn
-    , true-reflects (≤-reflects (g n) (minᵇ (pred x) z))
-       (subst is-true (≤ᵇ-minᵇ {x = g n} {y = pred x} {z = z} ⁻¹)
+    , true-reflects (≤-reflects (g n) (min (pred x) z))
+       (subst is-true (≤ᵇ-min {x = g n} {y = pred x} {z = z} ⁻¹)
          (is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = g n ≤ᵇ pred x} {y = g n ≤ᵇ z} ⁻¹ $
             (is-true≃is-trueₚ $ reflects-true (≤-reflects (g n) (pred x))
               (<≃≤pred {n = x} (<-weaken-z y x (<≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt))) $
