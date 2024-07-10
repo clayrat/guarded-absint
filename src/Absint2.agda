@@ -1117,6 +1117,101 @@ i-learn-from-failure-sem {b = BLt (AVar x) e}      {g} cs ias niab =
       (subst (is-true ∘ not) ((¬is-true≃is-falseₚ $ niab) ⁻¹) tt))
 i-learn-from-failure-sem {b = BLt (APlus e e₁) e₃}     cs ias niab = ias
 
+i-learn-from-success-aux-consistent : ∀ {s s' e n}
+                                    → consistent s
+                                    → i-learn-from-success-aux s n (a-af s e) (stlup s n) ＝ just s'
+                                    → consistent s'
+i-learn-from-success-aux-consistent {s} {e} {n} cs els with a-af s e | stlup s n | recall (a-af s) e | recall (stlup s) n
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Above x     | _           | ⟪ eqa ⟫ | ⟪ eql ⟫ = subst consistent (just-inj els) cs
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ = absurd (nothing≠just els)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ = subst consistent (just-inj els) cs
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ = absurd (nothing≠just els)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Below x     | AllN        | ⟪ eqa ⟫ | ⟪ eql ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ with y ≤ᵇ z | recall (y ≤ᵇ_) z
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ = absurd (nothing≠just els)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ with y ≤ᵇ z | recall (y ≤ᵇ_) z
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ = subst consistent (just-inj els) cs
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ with y ≤ᵇ z | recall (y ≤ᵇ_) z
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqyz ⟫ with y ≤ᵇ w | recall (y ≤ᵇ_) w
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqyz ⟫ | false | ⟪ eqyw ⟫ =
+  subst consistent (just-inj els) cs
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqyz ⟫ | true  | ⟪ eqyw ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eqyz ⟫ = absurd (nothing≠just els)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | Between x y | AllN        | ⟪ eqa ⟫ | ⟪ eql ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-success-aux-consistent {s} {e} {n} cs els | AllN        | _           | ⟪ eqa ⟫ | ⟪ eql ⟫ = subst consistent (just-inj els) cs
+
+i-learn-from-success-consistent : ∀ {s b s'}
+                                → consistent s
+                                → i-learn-from-success s b ＝ just s'
+                                → consistent s'
+i-learn-from-success-consistent     {b = BLt (ANum n) e}       cs els = subst consistent (just-inj els) cs
+i-learn-from-success-consistent {s} {b = BLt (AVar x) e}       cs els = i-learn-from-success-aux-consistent {s = s} {e = e} {n = x} cs els
+i-learn-from-success-consistent     {b = BLt (APlus e₁ e₂) e₃} cs els = subst consistent (just-inj els) cs
+
+i-learn-from-failure-aux-consistent : ∀ {s s' e n}
+                                    → consistent s
+                                    → i-learn-from-failure-aux s n (a-af s e) (stlup s n) ＝ just s'
+                                    → consistent s'
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els with a-af s e | stlup s n | recall (a-af s) e | recall (stlup s) n
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Above y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ = subst consistent (just-inj els) cs
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ = absurd (nothing≠just els)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Below y     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ with z <ᵇ x | recall (z <ᵇ_) x
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqzx ⟫ with x ≤ᵇ y | recall (x ≤ᵇ_) y
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqzx ⟫ | false | ⟪ eqxy ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqzx ⟫ | true  | ⟪ eqxy ⟫ =
+  subst consistent (just-inj els) cs
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eqzx ⟫ = absurd (nothing≠just els)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Above x     | AllN        | ⟪ eqa ⟫ | ⟪ eql ⟫ = subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Below x     | _           | ⟪ eqa ⟫ | ⟪ eql ⟫ = subst consistent (just-inj els) cs
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ z | recall (x ≤ᵇ_) z
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Above z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ = subst consistent (just-inj els) cs
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ with x ≤ᵇ z | recall (x ≤ᵇ_) z
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eq ⟫ = absurd (nothing≠just els)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Below z     | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ with w <ᵇ x | recall (w <ᵇ_) x
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqwx ⟫ with x ≤ᵇ z | recall (x ≤ᵇ_) z
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqwx ⟫ | false | ⟪ eqxz ⟫ =
+  subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | false | ⟪ eqwx ⟫ | true  | ⟪ eqxz ⟫ =
+  subst consistent (just-inj els) cs
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | Between z w | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eqwx ⟫ = absurd (nothing≠just els)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | Between x y | AllN        | ⟪ eqa ⟫ | ⟪ eql ⟫ = subst consistent (just-inj els) (consistent-update {s = s} cs)
+i-learn-from-failure-aux-consistent {s} {e} {n} cs els | AllN        | _           | ⟪ eqa ⟫ | ⟪ eql ⟫ = subst consistent (just-inj els) cs
+
+i-learn-from-failure-consistent : ∀ {s b s'}
+                                → consistent s
+                                → i-learn-from-failure s b ＝ just s'
+                                → consistent s'
+i-learn-from-failure-consistent     {b = BLt (ANum n) e}       cs els = subst consistent (just-inj els) cs
+i-learn-from-failure-consistent {s} {b = BLt (AVar x) e}       cs els = i-learn-from-failure-aux-consistent {s = s} {e = e} {n = x} cs els
+i-learn-from-failure-consistent     {b = BLt (APlus e₁ e₂) e₃} cs els = subst consistent (just-inj els) cs
+
 open module IntervalIntSem = AInt2Sem Interval AllN i-add i-fromN i-to-pred
                                       i-learn-from-success i-learn-from-failure
                                       i-join i-thinner i-over-approx
@@ -1131,8 +1226,8 @@ open module IntervalIntSem = AInt2Sem Interval AllN i-add i-fromN i-to-pred
                                       (λ {a} {b} → i-join-thinner-2 {a} {b})
                                       (λ {a1} {a2} → i-thinner-sem {a1} {a2})
                                       (λ {n} {s} {s'} → i-over-approx-consistent {n} {s} {s'})
-                                      (λ {s} {b} {s'} → {!!})
-                                      (λ {s} {b} {s'} → {!!})
+                                      (λ {s} {b} {s'} → i-learn-from-success-consistent {s} {b} {s'})
+                                      (λ {s} {b} {s'} → i-learn-from-failure-consistent {s} {b} {s'})
                                       (λ {g} {n} {s} {s'} → i-over-approx-sem {g} {n} {s} {s'})
                                       (λ {s} {b} {g} → i-learn-from-success-sem {s} {b} {g})
                                       (λ {s} {b} {g} → i-learn-from-failure-sem {s} {b} {g})
