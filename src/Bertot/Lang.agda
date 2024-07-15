@@ -1,4 +1,4 @@
-module Lang where
+module Bertot.Lang where
 
 open import Prelude
 open import Data.Empty

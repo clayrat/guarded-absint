@@ -1,4 +1,4 @@
-module AbsintCore where
+module Bertot.AbsintCore where
 
 open import Prelude
 open import Data.Empty
@@ -13,8 +13,8 @@ open import Data.List
 open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Sum
 
-open import Lang
-open import State
+open import Bertot.State as S
+open import Bertot.Lang
 
 module AIntCore
   (A : 𝒰)
@@ -25,7 +25,7 @@ module AIntCore
 
   where
 
-  open State.State A top
+  open S.State A top
 
   a-af : State → AExpr → A
   a-af s (ANum n)      = fromN n
@@ -59,7 +59,7 @@ module AIntCoreSem
   (subst-to-pred : ∀ {v x e e'} → qsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
   where
 
-  open State.State A top
+  open S.State A top
   open AIntCore A top fromN add to-pred
 
   qsubst-no-occur : ∀ {x l e} s

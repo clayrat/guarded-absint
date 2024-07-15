@@ -1,4 +1,4 @@
-module State where
+module Bertot.State where
 
 open import Prelude
 open import Data.Empty

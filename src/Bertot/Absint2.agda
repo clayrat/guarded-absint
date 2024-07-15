@@ -1,4 +1,4 @@
-module Absint2 where
+module Bertot.Absint2 where
 
 open import Prelude
 open import Data.Empty
@@ -15,9 +15,9 @@ open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects
 open import Data.Sum
 
-open import Lang
-open import State
-open import AbsintCore
+open import Bertot.State as S
+open import Bertot.Lang
+open import Bertot.AbsintCore as AC
 
 module AInt2
   (A : 𝒰)
@@ -35,8 +35,8 @@ module AInt2
 
   where
 
-  open State.State A top
-  open AbsintCore.AIntCore A top fromN add to-pred
+  open S.State A top
+  open AC.AIntCore A top fromN add to-pred
 
   join-state : State → State → State
   join-state []             s2 = []
@@ -123,7 +123,7 @@ module AInt2Sem
   (join-thinner-2 : ∀ {a b} → is-true (thinner b (join a b)))
   (thinner-sem : ∀ {a1 a2} → is-true (thinner a1 a2)
                → ∀ {g e} → ia m g (to-pred a1 e) → ia m g (to-pred a2 e))
-  (let open State.State A top)
+  (let open S.State A top)
   (over-approx-consistent : ∀ {n s s'}
                           → consistent s → consistent s'
                           → consistent (over-approx n s s'))
@@ -135,7 +135,7 @@ module AInt2Sem
                                  → consistent s
                                  → learn-from-failure s b ＝ just s'
                                  → consistent s')
-  (let open AbsintCore.AIntCore A top fromN add to-pred)
+  (let open AC.AIntCore A top fromN add to-pred)
   (over-approx-sem : ∀ {g n s s'}
                    → ia m g (s→a s)
                    → ia m g (s→a (over-approx n s s')))
@@ -515,7 +515,7 @@ i-to-pred (Between x y) e = QConj (QPred "leq" (ANum x ∷ e ∷ []))
                                   (QPred "leq" (e ∷ ANum y ∷ []))
 i-to-pred  AllN         _ = QTrue
 
-open module IState = State.State Interval AllN
+open module IState = S.State Interval AllN
 open module IInt = AIntCore Interval AllN i-fromN i-add i-to-pred
 
 -- TODO upstream

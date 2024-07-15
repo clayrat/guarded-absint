@@ -1,4 +1,4 @@
-module Absint1 where
+module Bertot.Absint1 where
 
 open import Prelude
 open import Data.Empty
@@ -13,9 +13,9 @@ open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects
 open import Data.Sum
 
-open import Lang
-open import State
-open import AbsintCore
+open import Bertot.State as S
+open import Bertot.Lang 
+open import Bertot.AbsintCore as AC
 
 module AInt
   (A : 𝒰)
@@ -26,8 +26,8 @@ module AInt
 
   where
 
-  open State.State A top
-  open AbsintCore.AIntCore A top fromN add to-pred
+  open S.State A top
+  open AC.AIntCore A top fromN add to-pred
 
   -- abstract interpreter
   ab1 : Instr → State → AnInstr × State
@@ -61,10 +61,10 @@ module AIntSem
   (subst-to-pred : ∀ {v x e e'} → qsubst x e' (to-pred v e) ＝ to-pred v (asubst x e' e))
   where
 
-  open State.State A top
-  open AbsintCore.AIntCore A top fromN add to-pred
+  open S.State A top
+  open AC.AIntCore A top fromN add to-pred
   open AInt A top fromN add to-pred
-  open AbsintCore.AIntCoreSem A top fromN add to-pred m top-sem fromN-sem to-pred-sem a-add-sem subst-to-pred
+  open AC.AIntCoreSem A top fromN add to-pred m top-sem fromN-sem to-pred-sem a-add-sem subst-to-pred
 
   ab1-pc : ∀ {i' s s'} i
          → ab1 i s ＝ (i' , s')
@@ -139,7 +139,7 @@ oe-to-pred Even  e = QPred "even" (e ∷ [])
 oe-to-pred Odd   e = QPred "odd" (e ∷ [])
 oe-to-pred OETop e = QTrue
 
-open module OEState = State.State OE OETop
+open module OEState = S.State OE OETop
 open module OEInt = AInt OE OETop oe-fromN oe-add oe-to-pred
 
 testprog : Instr
