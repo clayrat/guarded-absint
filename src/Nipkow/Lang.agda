@@ -315,6 +315,13 @@ sym-instr : ∀ {c₁ c₂} → c₁ ==ⁱ c₂ ＝ c₂ ==ⁱ c₁
 sym-instr {c₁} {c₂} = reflects-bool-inj (reflects-instr c₁ c₂)
                                         (dmapʳ _⁻¹ (_∘ _⁻¹) (reflects-instr c₂ c₁))
 
+instance
+  instr-is-discrete : is-discrete Instr
+  instr-is-discrete {x} {y} = (x ==ⁱ y) because reflects-instr x y
+
+instr-is-set : is-set Instr
+instr-is-set = is-discrete→is-set instr-is-discrete
+
 {- Annotated commands -}
 
 data AnInstr (A : 𝒰) : 𝒰 where

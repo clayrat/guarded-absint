@@ -45,19 +45,17 @@ module Collsem
 
   skip-≤ⁱ : ∀ {s c}
           → Reflects (Σ[ s' ꞉ A ] (c ＝ AnSkip s') × is-true (leq s s')) (AnSkip s ≤ⁱ c)
-  skip-≤ⁱ {s} {c} = dmapʳ (λ where ((s' , eq) , le) →
-                                       s' , eq , subst (is-true ∘ all2?₁ leq [ s ]₁ ∘ annos) eq le)
-                          (_∘ λ where (s' , eq , le) →
-                                        (s' , eq) , subst (is-true ∘ all2?₁ leq [ s ]₁ ∘ annos) (eq ⁻¹) le)
-                          (reflects-and2 (reflects-strip-skip c) reflects-id)
+  skip-≤ⁱ {s} {c} =
+    ≃→reflects
+      (Σ-assoc ⁻¹ ∙ Σ-ap-snd λ s' → Σ-ap-snd λ e → =→≃ (ap (is-true ∘ all2?₁ leq [ s ]₁ ∘ annos) e))
+      (reflects-and2 (reflects-strip-skip c) reflects-id)
 
   assign-≤ⁱ : ∀ {x e s c}
             → Reflects (Σ[ s' ꞉ A ] (c ＝ AnAssign x e s') × is-true (leq s s')) (AnAssign x e s ≤ⁱ c)
-  assign-≤ⁱ {s} {c} = dmapʳ (λ where ((s' , eq) , le) →
-                                         s' , eq , subst (is-true ∘ all2?₁ leq [ s ]₁ ∘ annos) eq le)
-                            (_∘ λ where (s' , eq , le) →
-                                          (s' , eq) , subst (is-true ∘ all2?₁ leq [ s ]₁ ∘ annos) (eq ⁻¹) le)
-                            (reflects-and2 (reflects-strip-assign c) reflects-id)
+  assign-≤ⁱ {s} {c} =
+    ≃→reflects
+      (Σ-assoc ⁻¹ ∙ Σ-ap-snd λ s' → Σ-ap-snd λ e → =→≃ (ap (is-true ∘ all2?₁ leq [ s ]₁ ∘ annos) e))
+      (reflects-and2 (reflects-strip-assign c) reflects-id)
 
   seq-≤ⁱ : ∀ {c₁ c₂ c}
          → Reflects (Σ[ c₃ ꞉ AnInstr A ] Σ[ c₄ ꞉ AnInstr A ]
@@ -65,28 +63,26 @@ module Collsem
                          × is-true (c₁ ≤ⁱ c₃) × is-true (c₂ ≤ⁱ c₄))
                     (AnSeq c₁ c₂ ≤ⁱ c)
   seq-≤ⁱ {c₁} {c₂} {c} =
-    dmapʳ (λ where ((a₁ , a₂ , eq₁ , eq₂ , eq₃) , le) →
-                       let eq1' = reflects-true (reflects-instr (strip c₁) (strip a₁)) (eq₂ ⁻¹)
-                           eq2' = reflects-true (reflects-instr (strip c₂) (strip a₂)) (eq₃ ⁻¹)
-                           le12 = and-true-≃ {x = all2?₁ leq (annos c₁) (annos a₁)} {y = all2?₁ leq (annos c₂) (annos a₂)} $
-                                  subst is-true (all2?-++₁ (length-annos-same {c₁ = c₁} eq1')) $
-                                  subst (is-true ∘ all2?₁ leq (annos c₁ ++₁ annos c₂) ∘ annos) eq₁ le
-                        in
-                          a₁ , a₂ , eq₁
-                        , (and-true-≃ {x = strip c₁ ==ⁱ strip a₁} {y = all2?₁ leq (annos c₁) (annos a₁)} ⁻¹ $ eq1' , le12 .fst)
-                        , (and-true-≃ {x = strip c₂ ==ⁱ strip a₂} {y = all2?₁ leq (annos c₂) (annos a₂)} ⁻¹ $ eq2' , le12 .snd))
-          (_∘ λ where (c₃ , c₄ , eq , le₁ , le₂) →
-                        let le1' = and-true-≃ {x = strip c₁ ==ⁱ strip c₃} {y = all2?₁ leq (annos c₁) (annos c₃)} $ le₁
-                            le2' = and-true-≃ {x = strip c₂ ==ⁱ strip c₄} {y = all2?₁ leq (annos c₂) (annos c₄)} $ le₂
-                          in
-                          ( ( c₃ , c₄ , eq
-                            , true-reflects (reflects-instr (strip c₁) (strip c₃)) (le1' .fst) ⁻¹
-                            , true-reflects (reflects-instr (strip c₂) (strip c₄)) (le2' .fst) ⁻¹))
-                          , (subst (is-true ∘ all2?₁ leq (annos c₁ ++₁ annos c₂) ∘ annos) (eq ⁻¹) $
-                             subst is-true (all2?-++₁ (length-annos-same {c₁ = c₁} {c₂ = c₃} (le1' .fst)) ⁻¹) $
-                             and-true-≃ {x = all2?₁ leq (annos c₁) (annos c₃)} {y = all2?₁ leq (annos c₂) (annos c₄)} ⁻¹ $
-                             le1' .snd , le2' .snd))
-          (reflects-and2 (reflects-strip-seq c) reflects-id)
+    ≃→reflects
+        (  Σ-assoc ⁻¹ ∙ Σ-ap-snd λ c₃ → Σ-assoc ⁻¹ ∙ Σ-ap-snd λ c₄ → Σ-assoc ⁻¹ ∙ Σ-ap-snd λ e → Σ-assoc ⁻¹
+         ∙ (Σ-ap-snd λ e₂ →
+               (Σ-ap-snd λ _ →
+                   =→≃ (  ap (is-true ∘ all2?₁ leq (annos c₁ ++₁ annos c₂) ∘ annos) e
+                        ∙ ap is-true (all2?-++₁ {as = annos c₁}
+                                        (length-annos-same {c₁ = c₁}
+                                                           (reflects-true (reflects-instr (strip c₁) (strip c₃)) (e₂ ⁻¹)))))
+                 ∙ and-true-≃ {x = all2?₁ leq (annos c₁) (annos c₃)} {y = all2?₁ leq (annos c₂) (annos c₄)})
+             ∙ ×-ap (reflects-injₑ (instr-is-set (strip c₄) (strip c₂)) (hlevel 1 ⦃ x = H-Level-is-true ⦄)
+                      (reflects-instr (strip c₄) (strip c₂))
+                      (subst (Reflects⁰ (is-true (strip c₂ ==ⁱ strip c₄))) (sym-instr {c₁ = strip c₂}) reflects-id)) refl
+             ∙ ×-assoc ∙ ×-ap ×-swap refl ∙ ×-assoc ⁻¹)
+         ∙ ×-ap (reflects-injₑ (instr-is-set (strip c₃) (strip c₁)) (hlevel 1 ⦃ x = H-Level-is-true ⦄)
+                   (reflects-instr (strip c₃) (strip c₁))
+                   (subst (Reflects⁰ (is-true (strip c₁ ==ⁱ strip c₃))) (sym-instr {c₁ = strip c₁}) reflects-id)) refl
+         ∙ ×-assoc
+         ∙ ×-ap (and-true-≃ {x = strip c₁ ==ⁱ strip c₃} {y = all2?₁ leq (annos c₁) (annos c₃)} ⁻¹)
+             (and-true-≃ {x = strip c₂ ==ⁱ strip c₄} {y = all2?₁ leq (annos c₂) (annos c₄)} ⁻¹))
+      (reflects-and2 (reflects-strip-seq c) reflects-id)
 
   ite-≤ⁱ : ∀ {b p₁ c₁ p₂ c₂ q₁ c}
          → Reflects (Σ[ p₃ ꞉ A ] Σ[ c₃ ꞉ AnInstr A ] Σ[ p₄ ꞉ A ] Σ[ c₄ ꞉ AnInstr A ] Σ[ q₂ ꞉ A ]
@@ -148,9 +144,60 @@ module Collsem
                            , le₅))
           (reflects-and2 (reflects-strip-ite c) reflects-id)
 
+  while-≤ⁱ : ∀ {inv₁ b p₁ c₁ q₁ c}
+           → Reflects (Σ[ inv₂ ꞉ A ] Σ[ p₂ ꞉ A ] Σ[ c₂ ꞉ AnInstr A ] Σ[ q₂ ꞉ A ]
+                            (c ＝ AnWhile inv₂ b p₂ c₂ q₂)
+                          × is-true (leq inv₁ inv₂) × is-true (leq p₁ p₂)
+                          × is-true (c₁ ≤ⁱ c₂) × is-true (leq q₁ q₂))
+                      (AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ c)
+  while-≤ⁱ {inv₁} {b} {p₁} {c₁} {q₁} {c} =
+    dmapʳ (λ where ((inv₂ , p₂ , c₂ , q₂ , eq₁ , eq₂) , le) →
+                      let eq' = reflects-true (reflects-instr (strip c₁) (strip c₂)) (eq₂ ⁻¹)
+                          le1 = and-true-≃ {x = all2?₁ leq (inv₁ ∷₁ (p₁ ∷₁ annos c₁))
+                                                           (inv₂ ∷₁ (p₂ ∷₁ annos c₂))}
+                                           {y = leq q₁ q₂} $
+                                subst is-true (all2?-∶+₁ {p = leq}
+                                                        (ap (2 +_) (length-annos-same {c₁ = c₁} eq'))) $
+                                subst (is-true ∘ all2?₁ leq ((inv₁ ∷₁ (p₁ ∷₁ annos c₁)) ∶+₁ q₁) ∘ annos) eq₁ le
+                          le2 = and-true-≃ {x = leq inv₁ inv₂}
+                                           {y = all2?₁ leq (p₁ ∷₁ annos c₁) (p₂ ∷₁ annos c₂)} $
+                                subst is-true (all2?-∶∶₁ {p = leq} {x = inv₁} {y = inv₂}
+                                                        {xs = p₁ ∷₁ annos c₁} {ys = p₂ ∷₁ annos c₂})
+                                              (le1 .fst)
+                          le3 = and-true-≃ {x = leq p₁ p₂}
+                                           {y = all2?₁ leq (annos c₁) (annos c₂)} $
+                                subst is-true (all2?-∶∶₁ {p = leq} {x = p₁} {y = p₂}
+                                                        {xs = annos c₁} {ys = annos c₂})
+                                              (le2 .snd)
+                       in
+                        inv₂ , p₂ , c₂ , q₂ , eq₁ , le2 .fst , le3 .fst
+                      , (and-true-≃ {x = strip c₁ ==ⁱ strip c₂} {y = all2?₁ leq (annos c₁) (annos c₂)} ⁻¹ $ eq' , (le3 .snd))
+                      , le1 .snd)
+          (_∘ λ where (inv₂ , p₂ , c₂ , q₂ , eq , le₁ , le₂ , le₃ , le₄) →
+                        let le3' = and-true-≃ {x = strip c₁ ==ⁱ strip c₂} {y = all2?₁ leq (annos c₁) (annos c₂)} $ le₃ in
+                        ( inv₂ , p₂ , c₂ , q₂ , eq
+                          , true-reflects (reflects-instr (strip c₁) (strip c₂)) (le3' .fst) ⁻¹)
+                        , (subst (is-true ∘ all2?₁ leq ((inv₁ ∷₁ (p₁ ∷₁ annos c₁)) ∶+₁ q₁) ∘ annos) (eq ⁻¹) $
+                           subst is-true (all2?-∶+₁ {p = leq}
+                                                   (ap (2 +_) (length-annos-same {c₁ = c₁} (le3' .fst))) ⁻¹) $
+                           and-true-≃ {x = all2?₁ leq (inv₁ ∷₁ (p₁ ∷₁ annos c₁))
+                                                      (inv₂ ∷₁ (p₂ ∷₁ annos c₂))}
+                                      {y = leq q₁ q₂} ⁻¹ $
+                             (subst is-true (all2?-∶∶₁ {p = leq} {x = inv₁} {y = inv₂}
+                                                        {xs = p₁ ∷₁ annos c₁} {ys = p₂ ∷₁ annos c₂} ⁻¹) $
+                              and-true-≃ {x = leq inv₁ inv₂}
+                                           {y = all2?₁ leq (p₁ ∷₁ annos c₁) (p₂ ∷₁ annos c₂)} ⁻¹ $
+                                le₁
+                              , (subst is-true (all2?-∶∶₁ {p = leq} {x = p₁} {y = p₂}
+                                                        {xs = annos c₁} {ys = annos c₂} ⁻¹) $
+                                 and-true-≃ {x = leq p₁ p₂}
+                                           {y = all2?₁ leq (annos c₁) (annos c₂)} ⁻¹ $
+                                 le₂ , le3' .snd))
+                          , le₄))
+          (reflects-and2 (reflects-strip-while c) reflects-id)
+
   mono-post : ∀ {c₁ c₂} → is-true (c₁ ≤ⁱ c₂) → is-true (leq (post c₁) (post c₂))
   mono-post {c₁} {c₂} c =
     (and-true-≃ {x = all id (zip-with leq (annos c₁ .init) (annos c₂ .init))}
                 {y = leq (annos c₁ .last) (annos c₂ .last)} $
        (and-true-≃ {x = strip c₁ ==ⁱ strip c₂} {y = all2?₁ leq (annos c₁) (annos c₂)} $ c) .snd) .snd
-
