@@ -61,6 +61,11 @@ length₁-++ : {xs ys : List1 A}
            → length₁ (xs ++₁ ys) ＝ length₁ xs + length₁ ys
 length₁-++ {xs = ix ∶+ lx} {ys = iy ∶+ ly} = ap suc (++-length ix (lx ∷ iy))
 
+all2?-∶∶₁ : {p : A → A → Bool} {x y : A}
+         → {xs ys : List1 A}
+         → all2?₁ p (x ∷₁ xs) (y ∷₁ ys) ＝ p x y and all2?₁ p xs ys
+all2?-∶∶₁ {p} {x} {y} {ix ∶+ lx} {iy ∶+ ly} = and-assoc (p x y) (all id (zip-with p ix iy)) (p lx ly)
+
 all2?-++₁ : {p : A → A → Bool}
           → {as bs xs ys : List1 A}
           → length₁ as ＝ length₁ xs
