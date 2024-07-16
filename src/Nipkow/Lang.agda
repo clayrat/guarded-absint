@@ -311,6 +311,10 @@ reflects-instr (While b₁ c₁)  (While b₂ c₂)  =
   dmapʳ (λ x → ap² While (x .fst) (x .snd)) (_∘ While-inj)
         (reflects-and2 (reflects-bexpr b₁ b₂) (reflects-instr c₁ c₂))
 
+sym-instr : ∀ {c₁ c₂} → c₁ ==ⁱ c₂ ＝ c₂ ==ⁱ c₁
+sym-instr {c₁} {c₂} = reflects-bool-inj (reflects-instr c₁ c₂)
+                                        (dmapʳ _⁻¹ (_∘ _⁻¹) (reflects-instr c₂ c₁))
+
 {- Annotated commands -}
 
 data AnInstr (A : 𝒰) : 𝒰 where
@@ -452,3 +456,80 @@ length-annos-same {c₁ = AnWhile inv₁ b₁ p₁ c₁ q₁} {c₂ = AnWhile in
   ap suc (  length-to-list {xs = inv₁ ∷₁ (q₁ ∷₁ annos c₁)}
           ∙ ap (2 +_) (length-annos-same {c₁ = c₁} h)
           ∙ length-to-list {xs = inv₂ ∷₁ (q₂ ∷₁ annos c₂)} ⁻¹)
+
+-- case reflection
+
+reflects-strip-skip : ∀ c → Reflects (Σ[ p ꞉ A ] (c ＝ AnSkip p))
+                                     (Skip ==ⁱ strip c)
+reflects-strip-skip (AnSkip p)              = ofʸ (p , refl)
+reflects-strip-skip (AnAssign x e p)        = ofⁿ λ where (q , eq) → AnSkip≠AnAssign (eq ⁻¹)
+reflects-strip-skip (AnSeq c₁ c₂)           = ofⁿ λ where (q , eq) → AnSkip≠AnSeq (eq ⁻¹)
+reflects-strip-skip (AnITE b p₁ c₁ p₂ c₂ q) = ofⁿ λ where (q , eq) → AnSkip≠AnITE (eq ⁻¹)
+reflects-strip-skip (AnWhile inv b p c q)   = ofⁿ λ where (q , eq) → AnSkip≠AnWhile (eq ⁻¹)
+
+reflects-strip-assign : ∀ {x e} c
+                      → Reflects (Σ[ p ꞉ A ] (c ＝ AnAssign x e p))
+                                 (Assign x e ==ⁱ strip c)
+reflects-strip-assign         (AnSkip p)             = ofⁿ λ where (q , eq) → AnSkip≠AnAssign eq
+reflects-strip-assign {x} {e} (AnAssign y g p)       =
+  dmapʳ (λ where (eq1 , eq2) → p , ap² (λ z₁ z₂ → AnAssign z₁ z₂ p) (eq1 ⁻¹) (eq2 ⁻¹))
+        (_∘ λ where (q , eq) → let (h1 , h2 , _) = AnAssign-inj eq in h1 ⁻¹ , h2 ⁻¹)
+        (reflects-and2 (discrete-reflects! {x = x} {y = y}) (reflects-aexpr e g))
+reflects-strip-assign         (AnSeq c₁ c₂)          = ofⁿ λ where (q , eq) → AnAssign≠AnSeq (eq ⁻¹)
+reflects-strip-assign         (AnITE b p₁ c p₂ c₁ q) = ofⁿ λ where (q , eq) → AnAssign≠AnITE (eq ⁻¹)
+reflects-strip-assign         (AnWhile inv b p c q)  = ofⁿ λ where (q , eq) → AnAssign≠AnWhile (eq ⁻¹)
+
+reflects-strip-seq : ∀ {c₁ c₂} c
+                   → Reflects (Σ[ a₁ ꞉ AnInstr A ] Σ[ a₂ ꞉ AnInstr A ]
+                                     (c ＝ AnSeq a₁ a₂)
+                                   × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂))
+                              (Seq c₁ c₂ ==ⁱ strip c)
+reflects-strip-seq           (AnSkip p)              = ofⁿ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) → AnSkip≠AnSeq eq₁
+reflects-strip-seq           (AnAssign x e p)        = ofⁿ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) → AnAssign≠AnSeq eq₁
+reflects-strip-seq {c₁} {c₂} (AnSeq c₃ c₄)           =
+  dmapʳ (λ where (eq1 , eq2) →
+                    c₃ , c₄ , refl , eq1 ⁻¹ , eq2 ⁻¹)
+        (_∘ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) →
+                      let (eq3 , eq4) = AnSeq-inj eq₁ in
+                      (ap strip eq3 ∙ eq₂) ⁻¹ , (ap strip eq4 ∙ eq₃) ⁻¹)
+        (reflects-and2 (reflects-instr c₁ (strip c₃)) (reflects-instr c₂ (strip c₄)))
+reflects-strip-seq           (AnITE b p₁ c₃ p₂ c₄ q) = ofⁿ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) → AnSeq≠AnITE (eq₁ ⁻¹)
+reflects-strip-seq           (AnWhile inv b p c₃ q)  = ofⁿ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) → AnSeq≠AnWhile (eq₁ ⁻¹)
+
+reflects-strip-ite : ∀ {b c₁ c₂} c
+                   → Reflects (Σ[ p₁ ꞉ A ] Σ[ a₁ ꞉ AnInstr A ] Σ[ p₂ ꞉ A ] Σ[ a₂ ꞉ AnInstr A ] Σ[ q ꞉ A ]
+                                    (c ＝ AnITE b p₁ a₁ p₂ a₂ q)
+                                  × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂))
+                              (ITE b c₁ c₂ ==ⁱ strip c)
+reflects-strip-ite               (AnSkip p)               =
+  ofⁿ λ where (p₁ , a₁ , p₂ , a₂ , q , eq₁ , eq₂ , eq₃) → AnSkip≠AnITE eq₁
+reflects-strip-ite               (AnAssign x e p)         =
+  ofⁿ λ where (p₁ , a₁ , p₂ , a₂ , q , eq₁ , eq₂ , eq₃) → AnAssign≠AnITE eq₁
+reflects-strip-ite               (AnSeq c₃ c₄)            =
+  ofⁿ λ where (p₁ , a₁ , p₂ , a₂ , q , eq₁ , eq₂ , eq₃) → AnSeq≠AnITE eq₁
+reflects-strip-ite {b} {c₁} {c₂} (AnITE b₂ p₁ c₃ p₂ c₄ q) =
+  dmapʳ (λ where (eq1 , eq2 , eq3) →
+                      p₁ , c₃ , p₂ , c₄ , q , ap (λ z → AnITE z p₁ c₃ p₂ c₄ q) (eq1 ⁻¹) , eq2 ⁻¹ , eq3 ⁻¹)
+        (_∘ λ where (p₁ , a₁ , p₂ , a₂ , q , eq₁ , eq₂ , eq₃) →
+                      let (h1 , _ , h3 , _ , h5 , _) = AnITE-inj eq₁ in
+                        h1 ⁻¹ , (ap strip h3 ∙ eq₂) ⁻¹ , (ap strip h5 ∙ eq₃) ⁻¹)
+        (reflects-and3 (reflects-bexpr b b₂) (reflects-instr c₁ (strip c₃)) (reflects-instr c₂ (strip c₄)))
+reflects-strip-ite               (AnWhile inv b p c₃ q)   =
+  ofⁿ λ where (p₁ , a₁ , p₂ , a₂ , q , eq₁ , eq₂ , eq₃) → AnITE≠AnWhile (eq₁ ⁻¹)
+
+reflects-strip-while : ∀ {b c₀} c
+                     → Reflects (Σ[ inv ꞉ A ] Σ[ p ꞉ A ] Σ[ a ꞉ AnInstr A ] Σ[ q ꞉ A ]
+                                      (c ＝ AnWhile inv b p a q)
+                                    × (strip a ＝ c₀))
+                                (While b c₀ ==ⁱ strip c)
+reflects-strip-while          (AnSkip p)              = ofⁿ λ where (inv , q , a , r , eq₁ , eq₂) → AnSkip≠AnWhile eq₁
+reflects-strip-while          (AnAssign x e p)        = ofⁿ λ where (inv , q , a , r , eq₁ , eq₂) → AnAssign≠AnWhile eq₁
+reflects-strip-while          (AnSeq c₁ c₂)           = ofⁿ λ where (inv , q , a , r , eq₁ , eq₂) → AnSeq≠AnWhile eq₁
+reflects-strip-while          (AnITE b p₁ c₁ p₂ c₂ q) = ofⁿ λ where (inv , q , a , r , eq₁ , eq₂) → AnITE≠AnWhile eq₁
+reflects-strip-while {b} {c₀} (AnWhile inv b₂ p c q)  =
+  dmapʳ (λ where (eq1 , eq2) →
+                    inv , p , c , q , ap (λ z → AnWhile inv z p c q) (eq1 ⁻¹) , eq2 ⁻¹)
+        (_∘ λ where (inv , q₁ , a , r , eq₁ , eq₂) →
+                      let (_ , h2 , _ , h4 , _) = AnWhile-inj eq₁ in
+                         h2 ⁻¹ , (ap strip h4 ∙ eq₂) ⁻¹)
+        (reflects-and2 (reflects-bexpr b b₂) (reflects-instr c₀ (strip c)))

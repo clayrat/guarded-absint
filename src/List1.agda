@@ -14,6 +14,8 @@ open import Data.Dec renaming (elim to elimᵈ)
 private variable
   A : 𝒰
 
+-- non-empty list with a guaranteed element at the end
+
 record List1 (A : 𝒰) : 𝒰 where
   constructor _∶+_
   field
@@ -46,6 +48,8 @@ all2?₁ f (init₁ ∶+ last₁) (init₂ ∶+ last₂) =
   all id (zip-with f init₁ init₂) and f last₁ last₂
 
 -- properties
+∶+₁-++₁ : {xs : List1 A} {x : A} → xs ∶+₁ x ＝ xs ++₁ [ x ]₁
+∶+₁-++₁ {xs = init ∶+ last} {x} = ap (_∶+ x) (snoc-append init)
 
 length-to-list : {xs : List1 A} → length (to-list xs) ＝ length₁ xs
 length-to-list {xs = ix ∶+ lx} = snoc-length ix
@@ -70,3 +74,9 @@ all2?-++₁ {p} {ia ∶+ la} {ib ∶+ lb} {ix ∶+ lx} {iy ∶+ ly} e =
                   ∙ all?-++ {p = id} {xs = zip-with p ia ix} {ys = zip-with p (la ∷ ib) (lx ∷ iy)}
                   ∙ and-assoc b1 b2 b3 ⁻¹)
   ∙ and-assoc (b1 and b2) b3 b4
+
+all2?-∶+₁ : {p : A → A → Bool} {x y : A}
+         → {xs ys : List1 A}
+         → length₁ xs ＝ length₁ ys
+         → all2?₁ p (xs ∶+₁ x) (ys ∶+₁ y) ＝ all2?₁ p xs ys and p x y
+all2?-∶+₁ {p} {x} {y} {xs} {ys} e = ap² (all2?₁ p) (∶+₁-++₁ {xs = xs}) (∶+₁-++₁ {xs = ys}) ∙ all2?-++₁ e
