@@ -365,10 +365,10 @@ module AInt2Sem
                    → ia m g (s→a s)
   s-stable-correct          []            ss ias' = tt
   s-stable-correct {g} {s'} ((x , v) ∷ s) ss ias' =
-    let hh = and-true-≃ {x = thinner (stlup s' x) v} {y = s-stable s s'} $ is-true≃is-trueₚ $ ss in
-      thinner-sem (is-true≃is-trueₚ ⁻¹ $ hh .fst)
+    let hh = and-true-≃ {x = thinner (stlup s' x) v} {y = s-stable s s'} $ ss in
+      thinner-sem (hh .fst)
          (transport (to-pred-sem ⁻¹) (lookup-sem s' ias'))
-    , s-stable-correct s (is-true≃is-trueₚ ⁻¹ $  hh .snd) ias'
+    , s-stable-correct s (hh .snd) ias'
 
   is-inv-correct : ∀ {ab b g s s' ai} s2
                  → is-true (is-inv ab s b)
@@ -794,8 +794,8 @@ i-join-thinner-1 {a = Below _}     {b = AllN}        = tt
 i-join-thinner-1 {a = Between x y} {b = Above z}     = min-l {x = x} {y = z}
 i-join-thinner-1 {a = Between x y} {b = Below z}     = max-l {x = y} {y = z}
 i-join-thinner-1 {a = Between x y} {b = Between z w} =
-  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = min x z ≤ᵇ x} {y = y ≤ᵇ max y w} ⁻¹ $
-  (is-true≃is-trueₚ $ min-l {x = x} {y = z}) , (is-true≃is-trueₚ $ max-l {x = y} {y = w})
+  and-true-≃ {x = min x z ≤ᵇ x} {y = y ≤ᵇ max y w} ⁻¹ $
+  (min-l {x = x} {y = z}) , (max-l {x = y} {y = w})
 i-join-thinner-1 {a = Between _ _} {b = AllN}        = tt
 i-join-thinner-1 {a = AllN}        {b = Above _}     = tt
 i-join-thinner-1 {a = AllN}        {b = Below _}     = tt
@@ -814,8 +814,8 @@ i-join-thinner-2 {a = Below _}     {b = AllN}        = tt
 i-join-thinner-2 {a = Between x y} {b = Above z}     = min-r {x = x} {y = z}
 i-join-thinner-2 {a = Between x y} {b = Below z}     = max-r {x = y} {y = z}
 i-join-thinner-2 {a = Between x y} {b = Between z w} =
-  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = min x z ≤ᵇ z} {y = w ≤ᵇ max y w} ⁻¹ $
-  (is-true≃is-trueₚ $ min-r {x = x} {y = z}) , (is-true≃is-trueₚ $ max-r {x = y} {y = w})
+  and-true-≃ {x = min x z ≤ᵇ z} {y = w ≤ᵇ max y w} ⁻¹ $
+  (min-r {x = x} {y = z}) , (max-r {x = y} {y = w})
 i-join-thinner-2 {a = Between _ _} {b = AllN}        = tt
 i-join-thinner-2 {a = AllN}        {b = Above _}     = tt
 i-join-thinner-2 {a = AllN}        {b = Below _}     = tt
@@ -840,9 +840,9 @@ i-thinner-sem {a1 = AllN}        {a2 = Below x}     h  ia1         = absurd h
 i-thinner-sem {a1 = Above x}     {a2 = Between y z} h  ia1         = absurd h
 i-thinner-sem {a1 = Below x}     {a2 = Between y z} h  ia1         = absurd h
 i-thinner-sem {a1 = Between x y} {a2 = Between z w} h  (iax , iay) =
-  let hh = and-true-≃ {x = z ≤ᵇ x} {y = y ≤ᵇ w} $ is-true≃is-trueₚ $ h in
-    ≤-trans (true-reflects (≤-reflects z x) (is-true≃is-trueₚ ⁻¹ $ hh .fst)) iax
-  , ≤-trans iay (true-reflects (≤-reflects y w) (is-true≃is-trueₚ ⁻¹ $ hh .snd))
+  let hh = and-true-≃ {x = z ≤ᵇ x} {y = y ≤ᵇ w} $ h in
+    ≤-trans (true-reflects (≤-reflects z x) (hh .fst)) iax
+  , ≤-trans iay (true-reflects (≤-reflects y w) (hh .snd))
 i-thinner-sem {a1 = AllN}        {a2 = Between x y} h  ia1         = absurd h
 i-thinner-sem {a1 = Above x}     {a2 = AllN}        tt ia1         = tt
 i-thinner-sem {a1 = Below x}     {a2 = AllN}        h  ia1         = tt
@@ -854,9 +854,9 @@ open-intervals-no-dups : ∀ {s' l} s
                        → is-true (no-dups (open-intervals s s') l)
 open-intervals-no-dups          []            h = tt
 open-intervals-no-dups {s'} {l} ((x , v) ∷ s) h =
-  let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $ is-true≃is-trueₚ $ h in
-  is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = not (mem x l)} {y = no-dups (open-intervals s s') (x ∷ l)} ⁻¹ $
-  (hh .fst) , (is-true≃is-trueₚ $ open-intervals-no-dups {s' = s'} s (is-true≃is-trueₚ ⁻¹ $ hh .snd))
+  let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $ h in
+  and-true-≃ {x = not (mem x l)} {y = no-dups (open-intervals s s') (x ∷ l)} ⁻¹ $
+  (hh .fst) , (open-intervals-no-dups {s' = s'} s (hh .snd))
 
 i-over-approx-consistent : ∀ {n s s'}
                          → consistent s → consistent s'
@@ -911,11 +911,11 @@ i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias gn<afge | Below x     | Betw
     ( y≤gn
     , true-reflects (≤-reflects (g n) (min (pred x) z))
        (subst is-true (≤ᵇ-min {x = g n} {y = pred x} {z = z} ⁻¹)
-         (is-true≃is-trueₚ ⁻¹ $ and-true-≃ {x = g n ≤ᵇ pred x} {y = g n ≤ᵇ z} ⁻¹ $
-            (is-true≃is-trueₚ $ reflects-true (≤-reflects (g n) (pred x))
+         (and-true-≃ {x = g n ≤ᵇ pred x} {y = g n ≤ᵇ z} ⁻¹ $
+            (reflects-true (≤-reflects (g n) (pred x))
               (<≃≤pred {n = x} (<-weaken-z y x (<≃≱ ⁻¹ $ false-reflects (≤-reflects x y) (subst (is-true ∘ not) (eq ⁻¹) tt))) $
                <-≤-trans gn<afge afge≤x))
-          , (is-true≃is-trueₚ $ reflects-true (≤-reflects (g n) z) gn≤z))))
+          , (reflects-true (≤-reflects (g n) z) gn≤z))))
 i-learn-from-success-aux-sem {s} {n} {e} {g} cs ias gn<afge | Below x     | Between y z | ⟪ eqa ⟫ | ⟪ eql ⟫ | true  | ⟪ eq ⟫ =
   let (y≤gn , _) = subst (λ q → ia i-m g (i-to-pred q (ANum (g n)))) eql (lookup-sem s ias)
       afge≤x = subst (λ q → ia i-m g (i-to-pred q (ANum (af g e)))) eqa (a-af-sound e ias)
