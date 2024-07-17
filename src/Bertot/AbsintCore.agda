@@ -21,7 +21,7 @@ module AIntCore
   (top : A)
   (fromN : ℕ → A)
   (add : A → A → A)
-  (to-pred : A → AExpr → Assert)
+  (to-pred : A → AExpr → Assert)  -- aka γ
 
   where
 
@@ -36,9 +36,9 @@ module AIntCore
   s→a []            = QTrue
   s→a ((x , a) ∷ t) = QConj (to-pred a (AVar x)) (s→a t)
 
-  s→a' : Maybe State → Assert
-  s→a' (just s) = s→a s
-  s→a' nothing  = QFalse
+  ms→a : Maybe State → Assert
+  ms→a (just s) = s→a s
+  ms→a nothing  = QFalse
 
 module AIntCoreSem
   (A : 𝒰)

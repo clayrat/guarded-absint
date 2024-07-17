@@ -14,7 +14,7 @@ open import Data.Reflects
 open import Data.Sum
 
 open import Bertot.State as S
-open import Bertot.Lang 
+open import Bertot.Lang
 open import Bertot.AbsintCore as AC
 
 module AInt
@@ -93,19 +93,18 @@ module AIntSem
     subst (λ q → valid m (vc i' (s→a q)) × consistent q) (ap snd h2) $
       subst (λ q → valid m (vc q (s→a (ab1 i₂ (ab1 i₁ s .snd) .snd)))) (ap fst h2)
             (valid-cat ((vc (ab1 i₁ s .fst) (pc (ab1 i₂ (ab1 i₁ s .snd) .fst) (s→a (ab1 i₂ (ab1 i₁ s .snd) .snd)))))
-                       (vc-monotonic (λ g x → ab1-pc i₂ refl x)
-                          (ab1 i₁ s .fst) ih11 .fst)
+                       (vc-monotonic (ab1 i₁ s .fst)
+                          ih11 (λ g x → ab1-pc i₂ refl x) .fst)
                        ih21)
     , ih22
   ab1-correct {i'} {s} (While b i)  h1 h2 =
-    let (ih1 , ih2) = ab1-correct {s = []} i tt refl
-        qq = vc-monotonic {p2 = QTrue} (λ _ _ → tt) (ab1 i [] .fst) ih1
-      in
+    let (ih1 , ih2) = ab1-correct {s = []} i tt refl in
     subst (λ q → valid m (vc i' (s→a q)) × consistent q) (ap snd h2) $
       subst (λ q → valid m (vc q QTrue)) (ap fst h2)
             ( (λ g x → ab1-pc i refl tt)
             , (λ _ _ → tt)
-            , qq .fst)
+            , vc-monotonic (ab1 i [] .fst)
+                ih1 (λ _ _ → tt) .fst)
     , tt
 
   ab1-clean : ∀ {i' s s'} i
@@ -164,12 +163,12 @@ testab1 = refl
 -- properties
 
 oe-m-aux : List ℕ → Bool → 𝒰
-oe-m-aux (x ∷ []) true  = is-true (even x)
-oe-m-aux (x ∷ []) false = is-true (odd x)
-oe-m-aux _        _     = ⊥
+oe-m-aux (x ∷ []) b = is-true (if b then even x else odd x)
+oe-m-aux _        _ = ⊥
 
 oe-m : String → List ℕ → 𝒰
-oe-m s l = if ⌊ s ≟ "even" ⌋ then oe-m-aux l true else if ⌊ s ≟ "odd" ⌋ then oe-m-aux l false else ⊥
+oe-m s l = if ⌊ s ≟ "even" ⌋ then oe-m-aux l true else
+             if ⌊ s ≟ "odd" ⌋ then oe-m-aux l false else ⊥
 
 oe-top-sem : ∀ {e} → oe-to-pred OETop e ＝ QTrue
 oe-top-sem = refl
