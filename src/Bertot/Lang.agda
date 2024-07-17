@@ -2,10 +2,8 @@ module Bertot.Lang where
 
 open import Prelude
 open import Data.Empty
-open import Data.Unit
 open import Data.Bool
 open import Data.Nat
-open import Data.Nat.Order.Inductive
 open import Data.String
 open import Data.List
 open import Data.Dec renaming (elim to elimᵈ)
@@ -55,12 +53,12 @@ ia m g  QFalse       = ⊥
 ia-prop : (m : String → List ℕ → 𝒰) → (g : String → ℕ) → (a : Assert)
         → ((s : String) → (l : List ℕ) → is-prop (m s l))
         → is-prop (ia m g a)
-ia-prop m g (QPred s l)   mpr = mpr s (map (af g) l)
-ia-prop m g (QB b)        _   = hlevel 1
-ia-prop m g (QConj a₁ a₂) mpr = ×-is-of-hlevel 1 (ia-prop m g a₁ mpr) (ia-prop m g a₂ mpr)
-ia-prop m g (QNot a)      _   = hlevel 1
-ia-prop m g  QTrue        _   = hlevel 1
-ia-prop m g  QFalse       _   = hlevel 1
+ia-prop m g (QPred s l)   m-prop = m-prop s (map (af g) l)
+ia-prop m g (QB b)        _      = hlevel 1
+ia-prop m g (QConj a₁ a₂) m-prop = ×-is-of-hlevel 1 (ia-prop m g a₁ m-prop) (ia-prop m g a₂ m-prop)
+ia-prop m g (QNot a)      _      = hlevel 1
+ia-prop m g  QTrue        _      = hlevel 1
+ia-prop m g  QFalse       _      = hlevel 1
 
 {- Annotated instruction -}
 

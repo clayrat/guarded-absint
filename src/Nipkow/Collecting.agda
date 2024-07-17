@@ -212,3 +212,6 @@ module Collsem
                   , gm le₁
                   , mono2-stepA {c₁ = c₁} fm gm le₃ le₂
                   , gm le₁)
+
+  step : A → AnInstr A → AnInstr A
+  step = stepA {!!} {!!}
