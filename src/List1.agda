@@ -13,11 +13,12 @@ open import Data.List.Correspondences.Binary.All2
 open import Data.Dec renaming (elim to elimᵈ)
 
 private variable
-  A : 𝒰
+  ℓ ℓ′ : Level
+  A : 𝒰 ℓ
 
 -- non-empty list with a guaranteed element at the end
 
-record List1 (A : 𝒰) : 𝒰 where
+record List1 (A : 𝒰 ℓ) : 𝒰 ℓ where
   constructor _∶+_
   field
     init : List A
@@ -60,27 +61,27 @@ length₁-++ {xs = ix ∶+ lx} {ys = iy ∶+ ly} = ap suc (++-length ix (lx ∷ 
 
 -- propositional all2
 
-All2₁ : (A → A → 𝒰) → List1 A → List1 A → 𝒰
+All2₁ : (A → A → 𝒰 ℓ′) → List1 A → List1 A → 𝒰 (level-of-type A ⊔ ℓ′)
 All2₁ R (ix ∶+ lx) (iy ∶+ ly) = All2 R ix iy × R lx ly
 
-All2-∶∶₁-l : {R : A → A → 𝒰} {x y : A}
+All2-∶∶₁-l : {R : A → A → 𝒰 ℓ′} {x y : A}
           → {xs ys : List1 A}
           → All2₁ R (x ∷₁ xs) (y ∷₁ ys) → R x y × All2₁ R xs ys
 All2-∶∶₁-l {xs = ix ∶+ lx} {ys = iy ∶+ ly} (ri ∷ rs , rl) = ri , (rs , rl)
 
-All2-∶∶₁-r : {R : A → A → 𝒰} {x y : A}
+All2-∶∶₁-r : {R : A → A → 𝒰 ℓ′} {x y : A}
           → {xs ys : List1 A}
           → R x y → All2₁ R xs ys → All2₁ R (x ∷₁ xs) (y ∷₁ ys)
 All2-∶∶₁-r {xs = ix ∶+ lx} {ys = iy ∶+ ly} ri (rs , rl) = ri ∷ rs , rl
 
-All2₁-++₁ : {R : A → A → 𝒰}
+All2₁-++₁ : {R : A → A → 𝒰 ℓ′}
           → {as bs xs ys : List1 A}
           → All2₁ R as xs → All2₁ R bs ys
           → All2₁ R (as ++₁ bs) (xs ++₁ ys)
 All2₁-++₁ {as = ia ∶+ la} {bs = ib ∶+ lb} {xs = ix ∶+ lx} {ys = iy ∶+ ly} (raxs , rax) (rbys , rby) =
   all2-++ raxs (rax ∷ rbys) , rby
 
-All2₁-split : {R : A → A → 𝒰}
+All2₁-split : {R : A → A → 𝒰 ℓ′}
             → {as bs xs ys : List1 A}
             → length₁ as ＝ length₁ xs
             → All2₁ R (as ++₁ bs) (xs ++₁ ys)
@@ -88,7 +89,7 @@ All2₁-split : {R : A → A → 𝒰}
 All2₁-split {as = ia ∶+ la} {bs = ib ∶+ lb} {xs = ix ∶+ lx} {ys = iy ∶+ ly} e (rs , rby) with all2-split (suc-inj e) rs
 ... | raxs , (rax ∷ rbys) = (raxs , rax) , (rbys , rby)
 
-All2₁-∶+₁-l : {R : A → A → 𝒰} {x y : A}
+All2₁-∶+₁-l : {R : A → A → 𝒰 ℓ′} {x y : A}
            → {xs ys : List1 A}
            → length₁ xs ＝ length₁ ys
            → All2₁ R (xs ∶+₁ x) (ys ∶+₁ y)
@@ -100,7 +101,7 @@ All2₁-∶+₁-l {R} {x} {y} {xs} {ys} e rs =
     in
   h .fst , h .snd .snd
 
-All2₁-∶+₁-r : {R : A → A → 𝒰} {x y : A}
+All2₁-∶+₁-r : {R : A → A → 𝒰 ℓ} {x y : A}
            → {xs ys : List1 A}
            → All2₁ R xs ys → R x y
            → All2₁ R (xs ∶+₁ x) (ys ∶+₁ y)

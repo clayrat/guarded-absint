@@ -19,9 +19,9 @@ open import Nipkow.ACom
 -- version with a propositional leq
 
 module CollsemA
-  (A : 𝒰)
+  (A : 𝒰 (ℓsuc 0ℓ))
   (sup : A → A → A)
-  (leq : A → A → 𝒰)
+  (leq : A → A → 𝒰 (ℓsuc 0ℓ))
   (leq-sup-r1 : ∀ {x a b} → leq x a → leq x (sup a b))
   (leq-sup-r2 : ∀ {x a b} → leq x b → leq x (sup a b))
   (leq-sup-l : ∀ {x a b} → leq a x → leq b x → leq (sup a b) x)
@@ -47,7 +47,7 @@ module CollsemA
   strip-stepA (AnITE b _ c₁ _ c₂ _) = ap² (ITE b) (strip-stepA c₁) (strip-stepA c₂)
   strip-stepA (AnWhile inv b _ c _) = ap (While b) (strip-stepA c)
 
-  _≤ⁱ_ : AnInstr A → AnInstr A → 𝒰
+  _≤ⁱ_ : AnInstr A → AnInstr A → 𝒰 (ℓsuc 0ℓ)
   c₁ ≤ⁱ c₂ = (strip c₁ ＝ strip c₂) × All2₁ leq (annos c₁) (annos c₂)
 
   opaque

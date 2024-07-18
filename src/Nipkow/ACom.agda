@@ -12,11 +12,12 @@ open import List1
 open import Nipkow.Lang
 
 private variable
-  A : 𝒰
+  ℓ : Level
+  A : 𝒰 ℓ
 
 {- Annotated commands -}
 
-data AnInstr (A : 𝒰) : 𝒰 where
+data AnInstr (A : 𝒰 ℓ) : 𝒰 ℓ where
   AnSkip   : (p : A) → AnInstr A
   AnAssign : (x : String) → (e : AExpr) → (p : A) → AnInstr A
   AnSeq    : (c₁ : AnInstr A) → (c₂ : AnInstr A) → AnInstr A
@@ -24,15 +25,15 @@ data AnInstr (A : 𝒰) : 𝒰 where
   AnWhile  : (inv : A) → (b : BExpr) → (p : A)  → (c : AnInstr A) → (q : A) → AnInstr A
 
 module AnInstrCode where
-  Code-AnInstr : AnInstr A → AnInstr A → 𝒰
-  Code-AnInstr (AnSkip p₁)                (AnSkip p₂)                = p₁ ＝ p₂
-  Code-AnInstr (AnAssign x₁ e₁ p₁)        (AnAssign x₂ e₂ p₂)        = (x₁ ＝ x₂) × (e₁ ＝ e₂) × (p₁ ＝ p₂)
-  Code-AnInstr (AnSeq c₁ c₂)              (AnSeq c₃ c₄)              = Code-AnInstr c₁ c₃ × Code-AnInstr c₂ c₄
-  Code-AnInstr (AnITE b₁ p₁ c₁ p₂ c₂ q₁)  (AnITE b₂ p₃ c₃ p₄ c₄ q₂)  =
+  Code-AnInstr : AnInstr A → AnInstr A → 𝒰 (level-of-type A)
+  Code-AnInstr     (AnSkip p₁)                (AnSkip p₂)                = p₁ ＝ p₂
+  Code-AnInstr     (AnAssign x₁ e₁ p₁)        (AnAssign x₂ e₂ p₂)        = (x₁ ＝ x₂) × (e₁ ＝ e₂) × (p₁ ＝ p₂)
+  Code-AnInstr     (AnSeq c₁ c₂)              (AnSeq c₃ c₄)              = Code-AnInstr c₁ c₃ × Code-AnInstr c₂ c₄
+  Code-AnInstr     (AnITE b₁ p₁ c₁ p₂ c₂ q₁)  (AnITE b₂ p₃ c₃ p₄ c₄ q₂)  =
     (b₁ ＝ b₂) × (p₁ ＝ p₃) × Code-AnInstr c₁ c₃ × (p₂ ＝ p₄) × Code-AnInstr c₂ c₄ × (q₁ ＝ q₂)
-  Code-AnInstr (AnWhile inv₁ b₁ p₁ c₁ q₁) (AnWhile inv₂ b₂ p₂ c₂ q₂) =
+  Code-AnInstr     (AnWhile inv₁ b₁ p₁ c₁ q₁) (AnWhile inv₂ b₂ p₂ c₂ q₂) =
     (inv₁ ＝ inv₂) × (b₁ ＝ b₂) × (p₁ ＝ p₂) × Code-AnInstr c₁ c₂ × (q₁ ＝ q₂)
-  Code-AnInstr _                           _                         = ⊥
+  Code-AnInstr {A}  _                           _                         = Lift (level-of-type A) ⊥
 
   code-aninstr-refl : (c : AnInstr A) → Code-AnInstr c c
   code-aninstr-refl (AnSkip p)              = refl
@@ -82,34 +83,34 @@ AnWhile-inj e = let (h1 , h2 , h3 , h4 , h5) = AnInstrCode.encode-aninstr e in
                 h1 , h2 , h3 , AnInstrCode.decode-aninstr h4 , h5
 
 AnSkip≠AnAssign : ∀ {x e} {p q : A} → AnSkip p ≠ AnAssign x e q
-AnSkip≠AnAssign = AnInstrCode.encode-aninstr
+AnSkip≠AnAssign = lower ∘ AnInstrCode.encode-aninstr
 
 AnSkip≠AnSeq : ∀ {c₁ c₂} {q : A} → AnSkip q ≠  AnSeq c₁ c₂
-AnSkip≠AnSeq = AnInstrCode.encode-aninstr
+AnSkip≠AnSeq = lower ∘ AnInstrCode.encode-aninstr
 
 AnSkip≠AnITE : ∀ {b c₁ c₂} {p₁ p₂ q r : A} → AnSkip r ≠ AnITE b p₁ c₁ p₂ c₂ q
-AnSkip≠AnITE = AnInstrCode.encode-aninstr
+AnSkip≠AnITE = lower ∘ AnInstrCode.encode-aninstr
 
 AnSkip≠AnWhile : ∀ {b c} {inv p q r : A} → AnSkip r ≠ AnWhile inv b p c q
-AnSkip≠AnWhile = AnInstrCode.encode-aninstr
+AnSkip≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 
 AnAssign≠AnSeq : ∀ {x e c₁ c₂} {p : A} → AnAssign x e p ≠ AnSeq c₁ c₂
-AnAssign≠AnSeq = AnInstrCode.encode-aninstr
+AnAssign≠AnSeq = lower ∘ AnInstrCode.encode-aninstr
 
 AnAssign≠AnITE : ∀ {b c₁ c₂ x e} {p₁ p₂ q r : A} → AnAssign x e r ≠ AnITE b p₁ c₁ p₂ c₂ q
-AnAssign≠AnITE = AnInstrCode.encode-aninstr
+AnAssign≠AnITE = lower ∘ AnInstrCode.encode-aninstr
 
 AnAssign≠AnWhile : ∀ {b c x e} {inv p q r : A} → AnAssign x e r ≠ AnWhile inv b p c q
-AnAssign≠AnWhile = AnInstrCode.encode-aninstr
+AnAssign≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 
 AnSeq≠AnITE : ∀ {b c₁ c₂ c₃ c₄} {p₁ p₂ q : A} → AnSeq c₁ c₂ ≠ AnITE b p₁ c₃ p₂ c₄ q
-AnSeq≠AnITE = AnInstrCode.encode-aninstr
+AnSeq≠AnITE = lower ∘ AnInstrCode.encode-aninstr
 
 AnSeq≠AnWhile : ∀ {b c₁ c₂ c} {inv p q : A} → AnSeq c₁ c₂ ≠ AnWhile inv b p c q
-AnSeq≠AnWhile = AnInstrCode.encode-aninstr
+AnSeq≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 
 AnITE≠AnWhile : ∀ {b₁ c₁ c₂ b₂ c₄} {p₁ p₂ q₁ inv p₃ q₂ : A} → AnITE b₁ p₁ c₁ p₂ c₂ q₁ ≠ AnWhile inv b₂ p₃ c₄ q₂
-AnITE≠AnWhile = AnInstrCode.encode-aninstr
+AnITE≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 
 -- annotation ops
 
@@ -191,7 +192,7 @@ reflects-strip-assign         (AnSeq c₁ c₂)          = ofⁿ λ where (q , e
 reflects-strip-assign         (AnITE b p₁ c p₂ c₁ q) = ofⁿ λ where (q , eq) → AnAssign≠AnITE (eq ⁻¹)
 reflects-strip-assign         (AnWhile inv b p c q)  = ofⁿ λ where (q , eq) → AnAssign≠AnWhile (eq ⁻¹)
 
-reflects-strip-seq : ∀ {c₁ c₂} c
+reflects-strip-seq : ∀ {A : 𝒰 ℓ} {c₁ c₂ : Instr} c
                    → Reflects (Σ[ a₁ ꞉ AnInstr A ] Σ[ a₂ ꞉ AnInstr A ]
                                      (c ＝ AnSeq a₁ a₂)
                                    × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂))
@@ -208,7 +209,7 @@ reflects-strip-seq {c₁} {c₂} (AnSeq c₃ c₄)           =
 reflects-strip-seq           (AnITE b p₁ c₃ p₂ c₄ q) = ofⁿ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) → AnSeq≠AnITE (eq₁ ⁻¹)
 reflects-strip-seq           (AnWhile inv b p c₃ q)  = ofⁿ λ where (a₁ , a₂ , eq₁ , eq₂ , eq₃) → AnSeq≠AnWhile (eq₁ ⁻¹)
 
-reflects-strip-ite : ∀ {b c₁ c₂} c
+reflects-strip-ite : ∀ {A : 𝒰 ℓ} {b c₁ c₂} c
                    → Reflects (Σ[ p₁ ꞉ A ] Σ[ a₁ ꞉ AnInstr A ] Σ[ p₂ ꞉ A ] Σ[ a₂ ꞉ AnInstr A ] Σ[ q ꞉ A ]
                                     (c ＝ AnITE b p₁ a₁ p₂ a₂ q)
                                   × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂))
@@ -229,7 +230,7 @@ reflects-strip-ite {b} {c₁} {c₂} (AnITE b₂ p₁ c₃ p₂ c₄ q) =
 reflects-strip-ite               (AnWhile inv b p c₃ q)   =
   ofⁿ λ where (p₁ , a₁ , p₂ , a₂ , q , eq₁ , eq₂ , eq₃) → AnITE≠AnWhile (eq₁ ⁻¹)
 
-reflects-strip-while : ∀ {b c₀} c
+reflects-strip-while : ∀ {A : 𝒰 ℓ} {b c₀} c
                      → Reflects (Σ[ inv ꞉ A ] Σ[ p ꞉ A ] Σ[ a ꞉ AnInstr A ] Σ[ q ꞉ A ]
                                       (c ＝ AnWhile inv b p a q)
                                     × (strip a ＝ c₀))
