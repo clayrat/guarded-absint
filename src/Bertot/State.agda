@@ -32,7 +32,7 @@ St A = List (String × A)
 
 module State
   (A : 𝒰)
-  (top : A)
+  (bot : A)
 
   where
 
@@ -62,7 +62,7 @@ module State
   no-dups-transpose-head {s} = no-dups-transpose {l = []} s
 
   stlup : State → String → A
-  stlup []            x = top
+  stlup []            x = bot
   stlup ((y , v) ∷ t) x = if ⌊ x ≟ y ⌋ then v else stlup t x
 
   stupd : String → A → State → State
