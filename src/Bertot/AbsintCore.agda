@@ -130,25 +130,23 @@ module AIntCoreSem
   lookup-sem2         []            h hp = tt
   lookup-sem2 {g} {l} ((x , v) ∷ s) h hp =
     let hh = and-true-≃ {x = not (mem x l)} {y = no-dups s (x ∷ l)} $ h in
-      elimᵈ {C = λ q → (is-true (not (mem x l)) →
+      discrete-eq {x = x}
+            {C = λ q → (is-true (not (mem x l)) →
                         ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s x) (AVar x))) →
-                 ia pe g (to-pred v (AVar x)) }
-            (λ _ f → f (hh .fst))
-            (λ ¬p → absurd (¬p refl))
-            (x ≟ x) (hp x)
+                 ia pe g (to-pred v (AVar x)) } refl
+            (λ f → f (hh .fst))
+            (hp x)
     , lookup-sem2 {l = x ∷ l} s (hh .snd)
-        λ y my → elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem y l)) →
+        λ y → elimᵈ {C = λ q → is-true (not (⌊ q ⌋ or mem y l)) →
                                    ia pe g (to-pred (stlup s y) (AVar y)) }
-                       (λ hp my′  → absurd my′)
-                       (λ ¬hp my′ → elimᵈ
-                                     {C =
-                                      λ q → (is-true (not (mem y l)) →
-                                             ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
-                                            ia pe g (to-pred (stlup s y) (AVar y))}
-                                     (λ ep py  → absurd (¬hp (ep ⁻¹)))
-                                     (λ ¬ep py → py my′)
-                                     (y ≟ x) (hp y))
-                       (x ≟ y) my
+                    (λ hp my′  → absurd my′)
+                    (λ ¬hp my′ → discrete-ne {C = λ q → (is-true (not (mem y l)) →
+                                                  ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
+                                                  ia pe g (to-pred (stlup s y) (AVar y))}
+                                  (¬hp ∘ _⁻¹)
+                                  (λ py → py my′)
+                                  (hp y))
+                    (x ≟ y)
 
   a-upd-ia-all : ∀ {g l x e} s → is-true (no-dups s l)
                → (∀ {y} → y ≠ x → is-true (not (mem y l))
@@ -170,31 +168,25 @@ module AIntCoreSem
                                                  is-true (not (mem y l)) →
                                                  ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))) →
                                                 ia pe g (to-pred (stlup s y) (AVar y))}
-                                     (λ e  _ → absurd (elimᵈ {C = λ q → is-true (not ⌊ q ⌋) → ⊥}
-                                                             (λ _ → id) (λ ¬e′ _ → ¬e′ (e ⁻¹))
-                                                             (z ≟ y) (hh .fst)))
+                                     (λ e  _ → absurd (discrete-eq {C = λ q → is-true (not ⌊ q ⌋) → ⊥} (e ⁻¹) id (hh .fst)))
                                      (λ ¬e f → f (λ p′ → ¬e (p′ ∙ hp)) (hh .snd))
                                      (y ≟ z)
                                      (ias {y}))
           (λ ¬hp ias iax → let hh = and-true-≃ {x = not (mem z l)} {y = no-dups s (z ∷ l)} $ cs in
-                            elimᵈ {C = λ q → ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s z) (AVar z))
-                                           → ia pe g (to-pred v (AVar z))}
-                                  (λ _  → id)
-                                  (λ ¬c → absurd (¬c refl))
-                                  (z ≟ z)
-                                  (ias (λ w → ¬hp (w ⁻¹)) (hh .fst))
+                            discrete-eq {x = z}
+                              {C = λ q → ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s z) (AVar z))
+                                       → ia pe g (to-pred v (AVar z))}
+                              refl id (ias (λ w → ¬hp (w ⁻¹)) (hh .fst))
                           , a-upd-ia-all {l = z ∷ l} s (hh .snd)
                                (λ {y} ne h → let h′ = and-true-≃ {x = not ⌊ z ≟ y ⌋} {y = not (mem y l)} $
                                                       subst is-true (not-or ⌊ z ≟ y ⌋ (mem y l)) h in
                                              elimᵈ {C = λ q → ia pe g (to-pred (if ⌊ q ⌋ then v else stlup s y) (AVar y))
                                                             → ia pe g (to-pred (stlup s y) (AVar y))}
-                                                   (λ yz → absurd (elimᵈ {C = λ q → is-true (not ⌊ q ⌋) → ⊥}
-                                                                         (λ _ → id) (λ ¬e′ _ → ¬e′ (yz ⁻¹))
-                                                                         (z ≟ y) (h′ .fst)))
+                                                   (λ yz → absurd (discrete-eq {C = λ q → is-true (not ⌊ q ⌋) → ⊥} (yz ⁻¹) id (h′ .fst)))
                                                    (λ ¬yz → id)
                                                    (y ≟ z)
                                                    (ias ne (h′ .snd)))
-                            iax)
+                               iax)
           (x ≟ z)
 
   a-upd-ia-all' : ∀ {g s x e} → consistent s

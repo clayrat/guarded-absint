@@ -364,7 +364,7 @@ module AInt2Sem
               → ia pe g (pc (do-annot (ab2 i) b s i) a)
   do-annot-pc {b} {g} {i} {a} {s} =
     elimᵐ (λ q → ia pe g (ms→a q) → ia pe g (pc (recᵐ (mark i) (λ s′ → ab2 i s′ .fst) q) a))
-          (λ c  → absurd c)
+          (λ c → absurd c)
           (λ st → ab2-pc i refl)
           (learn-from-success s b)
 

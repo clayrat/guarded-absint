@@ -28,7 +28,7 @@ data AEval : Env → AExpr → ℕ → 𝒰 where
   AEPlus : ∀ {r e1 e2 v1 v2}
          → AEval r e1 v1 → AEval r e2 v2 → AEval r (APlus e1 e2) (v1 + v2)
 
-data BEval : Env → BExpr              → Bool → 𝒰 where
+data BEval : Env → BExpr → Bool → 𝒰 where
   BELtT : ∀ {r e1 e2 v1 v2}
         → AEval r e1 v1 → AEval r e2 v2
         → v1 < v2 → BEval r (BLt e1 e2) true
