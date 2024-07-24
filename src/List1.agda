@@ -49,6 +49,9 @@ xs ∶+₁ x = to-list xs ∶+ x
 ∶+₁-++₁ : {xs : List1 A} {x : A} → xs ∶+₁ x ＝ xs ++₁ [ x ]₁
 ∶+₁-++₁ {xs = init ∶+ last} {x} = ap (_∶+ x) (snoc-append init)
 
+last-++₁ : {xs ys : List1 A} → last (xs ++₁ ys) ＝ last ys
+last-++₁ = refl
+
 length-to-list : {xs : List1 A} → length (to-list xs) ＝ length₁ xs
 length-to-list {xs = ix ∶+ lx} = snoc-length ix
 

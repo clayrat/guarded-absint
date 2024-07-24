@@ -4,12 +4,13 @@ open import Prelude
 open import Data.Empty
 open import Data.Bool renaming (_==_ to _==ᵇ_ ; ==-reflects to ==ᵇ-reflects)
 open import Data.Nat renaming (_==_ to _==ⁿ_ ; ==-reflects to ==ⁿ-reflects)
+open import Data.Nat.Order.Base
+open import Data.Sum
 open import Data.String
 open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects renaming (dmap to dmapʳ)
 
-private variable
-  A : 𝒰
+open import Nipkow.State as S
 
 {- The programming language -}
 
@@ -77,10 +78,12 @@ reflects-aexpr (APlus a₁ a₂) (APlus a₃ a₄) =
   dmapʳ (λ x → ap² APlus (x .fst) (x .snd)) (_∘ APlus-inj)
         (reflects-and2 (reflects-aexpr a₁ a₃) (reflects-aexpr a₂ a₄))
 
-af : (String → ℕ) → AExpr → ℕ
-af g (ANum n)      = n
-af g (AVar x)      = g x
-af g (APlus e₁ e₂) = af g e₁ + af g e₂
+open S.State ℕ 0
+
+aval : State → AExpr → ℕ
+aval s (ANum n)      = n
+aval s (AVar x)      = stlup s x
+aval s (APlus e₁ e₂) = aval s e₁ + aval s e₂
 
 {- Boolean expressions -}
 
@@ -173,11 +176,11 @@ reflects-bexpr (BLt e₁ e₂)  (BLt e₃ e₄)  =
   dmapʳ (λ x → ap² BLt (x .fst) (x .snd)) (_∘ BLt-inj)
         (reflects-and2 (reflects-aexpr e₁ e₃) (reflects-aexpr e₂ e₄))
 
-bf : (String → ℕ) → BExpr → Bool
-bf g (BC c)       = c
-bf g (BNot b)     = not (bf g b)
-bf g (BAnd b₁ b₂) = bf g b₁ and bf g b₂
-bf g (BLt e₁ e₂)  = af g e₁ <ᵇ af g e₂
+bval : State → BExpr → Bool
+bval s (BC c)       = c
+bval s (BNot b)     = not (bval s b)
+bval s (BAnd b₁ b₂) = bval s b₁ and bval s b₂
+bval s (BLt e₁ e₂)  = aval s e₁ <ᵇ aval s e₂
 
 {- Commands -}
 
@@ -323,3 +326,10 @@ isize (Assign _ _)  = 1
 isize (Seq c₁ c₂)   = isize c₁ + isize c₂
 isize (ITE _ c₁ c₂) = 3 + isize c₁ + isize c₂
 isize (While _ c)   = 3 + isize c
+
+isize-pos : ∀ i → 0 < isize i
+isize-pos  Skip         = z<s
+isize-pos (Assign x e)  = z<s
+isize-pos (Seq i₁ i₂)   = <-+-r (isize-pos i₁)
+isize-pos (ITE b i₁ i₂) = z<s
+isize-pos (While b i)   = z<s

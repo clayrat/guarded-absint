@@ -1,4 +1,4 @@
-module Nipkow.Collecting where
+module Nipkow.CollSem where
 
 open import Prelude
 open import Data.Empty
@@ -6,6 +6,7 @@ open import Data.Unit
 open import Data.Bool renaming (elim to elimᵇ)
 open import Data.Nat
 open import Data.Nat.Order.Inductive
+open import Data.Sum
 open import Data.String
 open import Data.List
 open import Data.List.Correspondences.Binary.All2
@@ -14,14 +15,16 @@ open import Data.Reflects renaming (dmap to dmapʳ)
 
 open import List1
 open import Nipkow.Lang
+open import Nipkow.OpSem
 open import Nipkow.ACom
+open import Nipkow.State as S
 
 -- version with a propositional leq
 
 module CollsemA
   (A : 𝒰 (ℓsuc 0ℓ))
   (sup : A → A → A)
-  (leq : A → A → 𝒰 (ℓsuc 0ℓ))
+  (leq : A → A → 𝒰)
   (leq-sup-r1 : ∀ {x a b} → leq x a → leq x (sup a b))
   (leq-sup-r2 : ∀ {x a b} → leq x b → leq x (sup a b))
   (leq-sup-l : ∀ {x a b} → leq a x → leq b x → leq (sup a b) x)
@@ -60,9 +63,13 @@ module CollsemA
               → AnSkip s ≤ⁱ c
               → Σ[ s' ꞉ A ] (c ＝ AnSkip s') × leq s s'
     skip-≤ⁱ-r {s} {c} (h1 , h2 , h3) =
-      let (s' , eq) = true-reflects (reflects-strip-skip c)
-                        (reflects-true (reflects-instr (strip (AnSkip s)) (strip c)) h1) in
+      let (s' , eq) = strip-skip-r (h1 ⁻¹) in
       s' , eq , subst (leq s) (ap post eq) h3
+
+    skip-≤ⁱ-r-id : ∀ {s s'}
+                 → AnSkip s ≤ⁱ AnSkip s'
+                 → leq s s'
+    skip-≤ⁱ-r-id {s} {s'} (h1 , h2 , h3) = h3
 
     assign-≤ⁱ-l : ∀ {x e s c}
                 → (s' : A) → c ＝ AnAssign x e s' → leq s s'
@@ -74,9 +81,13 @@ module CollsemA
                 → AnAssign x e s ≤ⁱ c
                 → Σ[ s' ꞉ A ] (c ＝ AnAssign x e s') × leq s s'
     assign-≤ⁱ-r {x} {e} {s} {c} (h1 , h2 , h3) =
-      let (s' , eq) = true-reflects (reflects-strip-assign c)
-                        (reflects-true (reflects-instr (strip (AnAssign x e s)) (strip c)) h1) in
+      let (s' , eq) = strip-assign-r (h1 ⁻¹) in
       s' , eq , subst (leq s) (ap post eq) h3
+
+    assign-≤ⁱ-r-id : ∀ {x e s s'}
+                   → AnAssign x e s ≤ⁱ AnAssign x e s'
+                   → leq s s'
+    assign-≤ⁱ-r-id {x} {e} {s} {s'} (h1 , h2 , h3) = h3
 
     seq-≤ⁱ-l : ∀ {c₁ c₂ c}
              → (c₃ c₄ : AnInstr A) → c ＝ AnSeq c₃ c₄ → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
@@ -90,14 +101,22 @@ module CollsemA
              → Σ[ c₃ ꞉ AnInstr A ] Σ[ c₄ ꞉ AnInstr A ]
                  (c ＝ AnSeq c₃ c₄) × c₁ ≤ⁱ c₃ × c₂ ≤ⁱ c₄
     seq-≤ⁱ-r {c₁} {c₂} {c} (h1 , h2) =
-      let (a₁ , a₂ , eq₁ , eq₂ , eq₃) = true-reflects (reflects-strip-seq c)
-                                          (reflects-true (reflects-instr (Seq (strip c₁) (strip c₂)) (strip c)) h1)
+      let (a₁ , a₂ , eq₁ , eq₂ , eq₃) = strip-seq-r (h1 ⁻¹)
           (le1 , le2) = All2₁-split
                           (length-annos-same {c₁ = c₁}
                              (reflects-true (reflects-instr (strip c₁) (strip a₁)) (eq₂ ⁻¹)))
                           (subst (All2₁ leq (annos c₁ ++₁ annos c₂) ∘ annos) eq₁ h2)
          in
         a₁ , a₂ , eq₁ , (eq₂ ⁻¹ , le1) , eq₃ ⁻¹ , le2
+
+    seq-≤ⁱ-r-id : ∀ {c₁ c₂ c₃ c₄}
+                → AnSeq c₁ c₂ ≤ⁱ AnSeq c₃ c₄
+                → c₁ ≤ⁱ c₃ × c₂ ≤ⁱ c₄
+    seq-≤ⁱ-r-id {c₁} {c₂} le =
+      let (a₁ , a₂ , eq , le₁ , le₂) = seq-≤ⁱ-r le
+          (eq₁ , eq₂) = AnSeq-inj eq
+        in
+      subst (c₁ ≤ⁱ_) (eq₁ ⁻¹) le₁ , subst (c₂ ≤ⁱ_) (eq₂ ⁻¹) le₂
 
     ite-≤ⁱ-l : ∀ {b p₁ c₁ p₂ c₂ q₁ c}
              → (p₃ : A) → (c₃ : AnInstr A) → (p₄ : A) → (c₄ : AnInstr A) → (q₂ : A)
@@ -115,8 +134,7 @@ module CollsemA
                               (c ＝ AnITE b p₃ c₃ p₄ c₄ q₂)
                             × leq p₁ p₃ × c₁ ≤ⁱ c₃ × leq p₂ p₄ × c₂ ≤ⁱ c₄ × leq q₁ q₂
     ite-≤ⁱ-r {b} {p₁} {c₁} {p₂} {c₂} {q₁} {c} (h1 , h2) =
-      let (p₃ , a₁ , p₄ , a₂ , q , eq , eq₁ , eq₂) = true-reflects (reflects-strip-ite c)
-                                                             (reflects-true (reflects-instr (ITE b (strip c₁) (strip c₂)) (strip c)) h1)
+      let (p₃ , a₁ , p₄ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r (h1 ⁻¹)
           le = All2₁-∶+₁-l (  length₁-++ {xs = p₁ ∷₁ annos c₁} {ys = p₂ ∷₁ annos c₂}
                             ∙ ap² (λ x y → suc x + suc y)
                                   (length-annos-same {c₁ = c₁}
@@ -131,6 +149,19 @@ module CollsemA
           le3 = All2-∶∶₁-l (le1 .snd)
         in
       p₃ , a₁ , p₄ , a₂ , q , eq , le2 .fst , (eq₁ ⁻¹ , le2 .snd) , le3 .fst , (eq₂ ⁻¹ , le3 .snd) , le .snd
+
+    ite-≤ⁱ-r-id : ∀ {b p₁ c₁ p₂ c₂ q₁ p₃ c₃ p₄ c₄ q₂}
+                → AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ AnITE b p₃ c₃ p₄ c₄ q₂
+                → leq p₁ p₃ × c₁ ≤ⁱ c₃ × leq p₂ p₄ × c₂ ≤ⁱ c₄ × leq q₁ q₂
+    ite-≤ⁱ-r-id {b} {p₁} {c₁} {p₂} {c₂} {q₁} {p₃} {c₃} {p₄} {c₄} {q₂} le =
+      let (r₁ , a₁ , r₂ , a₂ , w₁ , eq , le₁ , le₂ , le₃ , le₄ , le₅) = ite-≤ⁱ-r le
+          (_ , eq₁ , eq₂ , eq₃ , eq₄ , eq₅) = AnITE-inj eq
+        in
+        subst (leq p₁) (eq₁ ⁻¹) le₁
+      , subst (c₁ ≤ⁱ_) (eq₂ ⁻¹) le₂
+      , subst (leq p₂) (eq₃ ⁻¹) le₃
+      , subst (c₂ ≤ⁱ_) (eq₄ ⁻¹) le₄
+      , subst (leq q₁) (eq₅ ⁻¹) le₅
 
     while-≤ⁱ-l : ∀ {inv₁ b p₁ c₁ q₁ c}
                → (inv₂ : A) (p₂ : A) (c₂ : AnInstr A) (q₂ : A)
@@ -149,16 +180,24 @@ module CollsemA
                      (c ＝ AnWhile inv₂ b p₂ c₂ q₂)
                    × leq inv₁ inv₂ × leq p₁ p₂ × c₁ ≤ⁱ c₂ × leq q₁ q₂
     while-≤ⁱ-r {inv₁} {b} {p₁} {c₁} {q₁} {c} (h1 , h2) =
-      let (inv₂ , p , a , q , eq , eq₁) = true-reflects (reflects-strip-while c)
-                                            (reflects-true (reflects-instr (While b (strip c₁)) (strip c)) h1)
+      let (inv₂ , p , a , q , eq , eq₁) = strip-while-r (h1 ⁻¹)
           le = All2₁-∶+₁-l (ap (2 +_)
                               (length-annos-same {c₁ = c₁}
-                                                 (reflects-true (reflects-instr (strip c₁) (strip a)) (eq₁ ⁻¹)))) $
+                                (reflects-true (reflects-instr (strip c₁) (strip a)) (eq₁ ⁻¹)))) $
                subst (All2₁ leq (((inv₁ ∷₁ (p₁ ∷₁ annos c₁)) ∶+₁ q₁)) ∘ annos) eq h2
           le1 = All2-∶∶₁-l (le .fst)
           le2 = All2-∶∶₁-l (le1 .snd)
        in
       inv₂ , p , a , q , eq , le1 .fst , le2 .fst , (eq₁ ⁻¹ , le2 .snd) , le .snd
+
+    while-≤ⁱ-r-id : ∀ {b inv₁ p₁ c₁ q₁ inv₂ p₂ c₂ q₂}
+                  → AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ AnWhile inv₂ b p₂ c₂ q₂
+                  → leq inv₁ inv₂ × leq p₁ p₂ × c₁ ≤ⁱ c₂ × leq q₁ q₂
+    while-≤ⁱ-r-id {b} {inv₁} {p₁} {c₁} {q₁} {inv₂} {p₂} {c₂} {q₂} le =
+      let (inv₀ , p , a , q , eq , le1 , le2 , le3 , le4) = while-≤ⁱ-r le
+          (eq₁ , _ , eq₂ , eq₃ , eq₄) = AnWhile-inj eq
+        in
+      {!!}
 
   mono-post : ∀ {c₁ c₂} → c₁ ≤ⁱ c₂ → leq (post c₁) (post c₂)
   mono-post (_ , _ , h) = h
@@ -198,3 +237,107 @@ module CollsemA
                (ap (stepA f g s₂) eq)
                (leq-sup-l (leq-sup-r1 ls) (leq-sup-r2 (mono-post le₃))) (gm le₁)
                (mono2-stepA fm gm le₃ le₂) (gm le₁)
+
+open S.State ℕ 0
+
+SetState : 𝒰 (ℓsuc 0ℓ)
+SetState = State → 𝒰
+
+_∈ˢ_ : State → SetState → 𝒰
+s ∈ˢ ss = ss s
+
+mapSS : (State → State) → SetState → SetState
+mapSS f ss s = Σ[ s' ꞉ State ] (s ＝ f s') × ss s'
+
+ctramapSS : (State → State) → SetState → SetState
+ctramapSS f ss = ss ∘ f
+
+univSS : SetState
+univSS _ = ⊤
+
+supSS : SetState → SetState → SetState
+supSS x y s = x s ⊎ y s
+
+leqSS : SetState → SetState → 𝒰
+leqSS s1 s2 = (x : State) → s1 x → s2 x
+
+leq-supSS-r1 : ∀ {x a b} → leqSS x a → leqSS x (supSS a b)
+leq-supSS-r1 la st h = inl (la st h)
+
+leq-supSS-r2 : ∀ {x a b} → leqSS x b → leqSS x (supSS a b)
+leq-supSS-r2 lb st h = inr (lb st h)
+
+leq-supS-l : ∀ {x a b} → leqSS a x → leqSS b x → leqSS (supSS a b) x
+leq-supS-l la lb st (inl as) = la st as
+leq-supS-l la lb st (inr bs) = lb st bs
+
+open CollsemA SetState supSS leqSS
+              (λ {x} {a} {b} → leq-supSS-r1 {x} {a} {b})
+              (λ {x} {a} {b} → leq-supSS-r2 {x} {a} {b})
+              (λ {x} {a} {b} → leq-supS-l {x} {a} {b})
+
+step : SetState → AnInstr SetState → AnInstr SetState
+step = stepA (λ x e → mapSS (λ s → stupd x (aval s e) s))
+             (λ b S s → is-true (bval s b) × S s)
+
+mono2-step : ∀ {c₁ c₂}
+           → c₁ ≤ⁱ c₂
+           → ∀ {s₁ s₂} → leqSS s₁ s₂ → step s₁ c₁ ≤ⁱ step s₂ c₂
+mono2-step =
+  mono2-stepA
+    (λ {x} {e} {s₁} {s₂} le s → λ where (s' , eq , S) → s' , eq , le s' S)
+    (λ {b} {s₁} {s₂} le s bf → bf .fst , le s (bf .snd))
+
+strip-step : ∀ {s} {c} → strip (step s c) ＝ strip c
+strip-step {c} = strip-stepA c
+
+{- Relation to big-step semantics -}
+big-step-post-step : ∀ {s s' i a ss}
+                   → Exec i s s' → strip a ＝ i
+                   → s ∈ˢ ss
+                   → step ss a ≤ⁱ a
+                   → s' ∈ˢ post a
+big-step-post-step {s} .{s' = s} .{i = Skip}        {a} {ss}  ExSkip                      seq sin stleq =
+  let (p , eq) = strip-skip-r seq
+      le = skip-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+   in
+  subst (λ q → s ∈ˢ post q) (eq ⁻¹) (le s sin)
+big-step-post-step {s}  {s'}     .{i = Assign x e}  {a} {ss} (ExAssign {x} {e} upd)       seq sin stleq =
+  let (p , eq) = strip-assign-r seq
+      le = assign-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+    in
+  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) (le s' (s , upd , sin))
+big-step-post-step {s}  {s'}     .{i = Seq i₁ i₂}   {a} {ss} (ExSeq {i₁} {i₂} ex₁ ex₂)    seq sin stleq =
+  let (a₁ , a₂ , eq , eq₁ , eq₂) = strip-seq-r seq
+      le12 = seq-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le1 = le12 .fst
+      le2 = le12 .snd
+    in
+  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
+  big-step-post-step {a = a₂} {ss = post a₁}
+    ex₂ eq₂ (big-step-post-step {a = a₁} ex₁ eq₁ sin le1) le2
+big-step-post-step {s}  {s'}     .{i = ITE b i₁ i₂} {a} {ss} (ExITET {b} {i₁} {i₂} bt ex) seq sin stleq =
+  let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r seq
+      le1234 = ite-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le1 = le1234 .fst
+      le2 = le1234 .snd .fst
+      le5 = le1234 .snd .snd .snd .snd
+    in
+  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
+  le5 s' $
+  inl (big-step-post-step {a = a₁} {ss = p₁} ex eq₁ (le1 s (bt , sin)) le2)
+big-step-post-step {s}  {s'}     .{i = ITE b i₁ i₂} {a} {ss} (ExITEF {b} {i₁} {i₂} bf ex) seq sin stleq =
+  let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r seq
+      le1234 = ite-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le3 = le1234 .snd .snd .fst
+      le4 = le1234 .snd .snd .snd .fst
+      le5 = le1234 .snd .snd .snd .snd
+    in
+  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
+  le5 s' $
+  inr (big-step-post-step {a = a₂} {ss = p₂} ex eq₂ (le3 s (bf , sin)) le4)
+big-step-post-step {s}  {s'}      {i}               {a} {ss} (ExWhileT x ex ex₁)          seq sin stleq =
+  {!!}
+big-step-post-step {s}  {s'}      {i}               {a} {ss} (ExWhileF x)                 seq sin stleq =
+  {!!}
+
