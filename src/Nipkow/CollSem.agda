@@ -5,7 +5,7 @@ open import Data.Empty
 open import Data.Unit
 open import Data.Bool renaming (elim to elimᵇ)
 open import Data.Nat
-open import Data.Nat.Order.Inductive
+--open import Data.Nat.Order.Inductive
 open import Data.Sum
 open import Data.String
 open import Data.List
@@ -13,6 +13,7 @@ open import Data.List.Correspondences.Binary.All2
 open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects renaming (dmap to dmapʳ)
 
+open import Order.Base
 open import Combinatorics.Power
 
 open import List1
@@ -21,34 +22,12 @@ open import Nipkow.OpSem
 open import Nipkow.ACom
 open import Nipkow.State as S
 
-module CollsemA
+module AnInstrLeq
   (A : 𝒰 (ℓsuc 0ℓ))
-  (sup : A → A → A)
   (leq : A → A → 𝒰)
-  (leq-sup-r1 : ∀ {x a b} → leq x a → leq x (sup a b))
-  (leq-sup-r2 : ∀ {x a b} → leq x b → leq x (sup a b))
-  (leq-sup-l : ∀ {x a b} → leq a x → leq b x → leq (sup a b) x)
   where
 
   open List1.List1
-
-  -- semantics
-
-  stepA : (String → AExpr → A → A)
-        → (BExpr → A → A)
-        → A → AnInstr A → AnInstr A
-  stepA f g s (AnSkip _)              = AnSkip s
-  stepA f g s (AnAssign x e _)        = AnAssign x e (f x e s)
-  stepA f g s (AnSeq c₁ c₂)           = AnSeq (stepA f g s c₁) (stepA f g (post c₁) c₂)
-  stepA f g s (AnITE b p₁ c₁ p₂ c₂ q) = AnITE b (g b s) (stepA f g p₁ c₁) (g (BNot b) s) (stepA f g p₂ c₂) (sup (post c₁) (post c₂))
-  stepA f g s (AnWhile inv b p c q)   = AnWhile (sup s (post c)) b (g b inv) (stepA f g p c) (g (BNot b) inv)
-
-  strip-stepA : ∀ {f g s} c → strip (stepA f g s c) ＝ strip c
-  strip-stepA (AnSkip _)            = refl
-  strip-stepA (AnAssign x e _)      = refl
-  strip-stepA (AnSeq c₁ c₂)         = ap² Seq (strip-stepA c₁) (strip-stepA c₂)
-  strip-stepA (AnITE b _ c₁ _ c₂ _) = ap² (ITE b) (strip-stepA c₁) (strip-stepA c₂)
-  strip-stepA (AnWhile inv b _ c _) = ap (While b) (strip-stepA c)
 
   _≤ⁱ_ : AnInstr A → AnInstr A → 𝒰 (ℓsuc 0ℓ)
   c₁ ≤ⁱ c₂ = (strip c₁ ＝ strip c₂) × All2₁ leq (annos c₁) (annos c₂)
@@ -205,6 +184,54 @@ module CollsemA
   mono-post : ∀ {c₁ c₂} → c₁ ≤ⁱ c₂ → leq (post c₁) (post c₂)
   mono-post (_ , _ , h) = h
 
+module AnInstrOrd
+  (P : Poset (ℓsuc 0ℓ) 0ℓ)
+  where
+
+  open Poset P
+  open AnInstrLeq Ob _≤_
+
+  an-poset : Poset (ℓsuc 0ℓ) (ℓsuc 0ℓ)
+  an-poset .Poset.Ob                                = AnInstr ⌞ P ⌟
+  an-poset .Poset._≤_                               = _≤ⁱ_
+  an-poset .Poset.≤-thin                            = ×-is-of-hlevel 1 (instr-is-set (strip _) (strip _))
+                                                                       (All2₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
+  an-poset .Poset.≤-refl                            = refl , all2₁-refl (λ _ → ≤-refl)
+  an-poset .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all2₁-trans (λ _ _ _ → ≤-trans) axy ayz
+  an-poset .Poset.≤-antisym (exy , axy) (eyx , ayx) =
+    strip-annos-same (reflects-true (reflects-instr (strip _) (strip _)) exy)
+                     (all2₁-antisym (λ _ _ → ≤-antisym) axy ayx)
+
+module CollsemA
+  (A : 𝒰 (ℓsuc 0ℓ))
+  (sup : A → A → A)
+  (leq : A → A → 𝒰)
+  (leq-sup-r1 : ∀ {x a b} → leq x a → leq x (sup a b))
+  (leq-sup-r2 : ∀ {x a b} → leq x b → leq x (sup a b))
+  (leq-sup-l : ∀ {x a b} → leq a x → leq b x → leq (sup a b) x)
+  where
+
+  open List1.List1
+  open AnInstrLeq A leq
+
+  -- semantics
+
+  stepA : (String → AExpr → A → A)
+        → (BExpr → A → A)
+        → A → AnInstr A → AnInstr A
+  stepA f g s (AnSkip _)              = AnSkip s
+  stepA f g s (AnAssign x e _)        = AnAssign x e (f x e s)
+  stepA f g s (AnSeq c₁ c₂)           = AnSeq (stepA f g s c₁) (stepA f g (post c₁) c₂)
+  stepA f g s (AnITE b p₁ c₁ p₂ c₂ q) = AnITE b (g b s) (stepA f g p₁ c₁) (g (BNot b) s) (stepA f g p₂ c₂) (sup (post c₁) (post c₂))
+  stepA f g s (AnWhile inv b p c q)   = AnWhile (sup s (post c)) b (g b inv) (stepA f g p c) (g (BNot b) inv)
+
+  strip-stepA : ∀ {f g s} c → strip (stepA f g s c) ＝ strip c
+  strip-stepA (AnSkip _)            = refl
+  strip-stepA (AnAssign x e _)      = refl
+  strip-stepA (AnSeq c₁ c₂)         = ap² Seq (strip-stepA c₁) (strip-stepA c₂)
+  strip-stepA (AnITE b _ c₁ _ c₂ _) = ap² (ITE b) (strip-stepA c₁) (strip-stepA c₂)
+  strip-stepA (AnWhile inv b _ c _) = ap (While b) (strip-stepA c)
+
   mono2-stepA : ∀ {f : String → AExpr → A → A} {g : BExpr → A → A} {c₁ c₂}
               → (∀ {x e s₁ s₂} → leq s₁ s₂ → leq (f x e s₁) (f x e s₂))
               → (∀ {b s₁ s₂} → leq s₁ s₂ → leq (g b s₁) (g b s₂))
@@ -246,6 +273,7 @@ open S.State ℕ 0
 SetState : 𝒰 (ℓsuc 0ℓ)
 SetState = ℙ State 0ℓ
 
+open AnInstrLeq SetState _⊆_
 open CollsemA SetState _∪_ _⊆_
                         (λ {x} {a} {b} → ⊆-∪-r-l {A = a} {B = b} {C = x})
                         (λ {x} {a} {b} → ⊆-∪-r-r {A = a} {B = b} {C = x})
@@ -345,3 +373,4 @@ big-step-post-step {s}  {s'}        .{i = While b i}  {a} {ss} (ExWhileF {b} {i}
   subst (λ q → s' ∈ post q) (eq ⁻¹) $
   le4 $
   bf , (le1 ∣ inl sin ∣₁)
+

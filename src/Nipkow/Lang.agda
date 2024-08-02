@@ -41,6 +41,28 @@ module AExprCode where
   decode-aexpr {AVar x}      {AVar y}       c        = ap AVar c
   decode-aexpr {APlus a₁ a₂} {APlus a₃ a₄} (c₁ , c₂) = ap² APlus (decode-aexpr c₁) (decode-aexpr c₂)
 
+  code-aexpr-is-prop : ∀ a b → is-prop (Code-aexpr a b)
+  code-aexpr-is-prop (ANum n₁)     (ANum n₂)     = hlevel!
+  code-aexpr-is-prop (ANum n₁)     (AVar x₂)     = hlevel!
+  code-aexpr-is-prop (ANum n₁)     (APlus b₁ b₂) = hlevel!
+  code-aexpr-is-prop (AVar x₁)     (ANum n₂)     = hlevel!
+  code-aexpr-is-prop (AVar x₁)     (AVar x₂)     = path-is-of-hlevel 1 (is-discrete→is-set string-is-discrete) x₁ x₂
+  code-aexpr-is-prop (AVar x₁)     (APlus b₁ b₂) = hlevel!
+  code-aexpr-is-prop (APlus a₁ a₂) (ANum n₂)     = hlevel!
+  code-aexpr-is-prop (APlus a₁ a₂) (AVar x₂)     = hlevel!
+  code-aexpr-is-prop (APlus a₁ a₂) (APlus b₁ b₂) = ×-is-of-hlevel 1 (code-aexpr-is-prop a₁ b₁) (code-aexpr-is-prop a₂ b₂)
+
+  AExpr-identity-system : is-identity-system Code-aexpr code-aexpr-refl
+  AExpr-identity-system = set-identity-system code-aexpr-is-prop decode-aexpr
+
+instance
+  H-Level-AExpr : ∀ {n} → H-Level (2 + n) AExpr
+  H-Level-AExpr = hlevel-basic-instance 2 $
+                  identity-system→is-of-hlevel 1
+                    AExprCode.AExpr-identity-system
+                    AExprCode.code-aexpr-is-prop
+  {-# OVERLAPPING H-Level-AExpr #-}
+
 ANum-inj : ∀ {n m} → ANum n ＝ ANum m → n ＝ m
 ANum-inj = AExprCode.encode-aexpr
 
@@ -115,6 +137,35 @@ module BExprCode where
   decode-bexpr {BNot b₁}    {BNot b₂}     c        = ap BNot (decode-bexpr c)
   decode-bexpr {BAnd b₁ b₂} {BAnd b₃ b₄} (c₁ , c₂) = ap² BAnd (decode-bexpr c₁) (decode-bexpr c₂)
   decode-bexpr {BLt a₁ a₂}  {BLt a₃ a₄}  (c₁ , c₂) = ap² BLt c₁ c₂
+
+  code-bexpr-is-prop : ∀ a b → is-prop (Code-bexpr a b)
+  code-bexpr-is-prop (BC x)       (BC y)       = hlevel!
+  code-bexpr-is-prop (BC x)       (BNot b)     = hlevel!
+  code-bexpr-is-prop (BC x)       (BAnd b₁ b₂) = hlevel!
+  code-bexpr-is-prop (BC x)       (BLt b₁ b₂)  = hlevel!
+  code-bexpr-is-prop (BNot a)     (BC x)       = hlevel!
+  code-bexpr-is-prop (BNot a)     (BNot b)     = code-bexpr-is-prop a b
+  code-bexpr-is-prop (BNot a)     (BAnd b₁ b₂) = hlevel!
+  code-bexpr-is-prop (BNot a)     (BLt x x₁)   = hlevel!
+  code-bexpr-is-prop (BAnd a₁ a₂) (BC x)       = hlevel!
+  code-bexpr-is-prop (BAnd a₁ a₂) (BNot b)     = hlevel!
+  code-bexpr-is-prop (BAnd a₁ a₂) (BAnd b₁ b₂) = ×-is-of-hlevel 1 (code-bexpr-is-prop a₁ b₁) (code-bexpr-is-prop a₂ b₂)
+  code-bexpr-is-prop (BAnd a₁ a₂) (BLt b₁ b₂)  = hlevel!
+  code-bexpr-is-prop (BLt a₁ a₂)  (BC x₂)      = hlevel!
+  code-bexpr-is-prop (BLt a₁ a₂)  (BNot b)     = hlevel!
+  code-bexpr-is-prop (BLt a₁ a₂)  (BAnd b₁ b₂) = hlevel!
+  code-bexpr-is-prop (BLt a₁ a₂)  (BLt b₁ b₂)  = hlevel!
+
+  BExpr-identity-system : is-identity-system Code-bexpr code-bexpr-refl
+  BExpr-identity-system = set-identity-system code-bexpr-is-prop decode-bexpr
+
+instance
+  H-Level-BExpr : ∀ {n} → H-Level (2 + n) BExpr
+  H-Level-BExpr = hlevel-basic-instance 2 $
+                  identity-system→is-of-hlevel 1
+                    BExprCode.BExpr-identity-system
+                    BExprCode.code-bexpr-is-prop
+  {-# OVERLAPPING H-Level-BExpr #-}
 
 BC-inj : ∀ {c₁ c₂} → BC c₁ ＝ BC c₂ → c₁ ＝ c₂
 BC-inj = BExprCode.encode-bexpr

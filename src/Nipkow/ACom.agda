@@ -170,6 +170,43 @@ length-annos-same {c₁ = AnWhile inv₁ b₁ p₁ c₁ q₁} {c₂ = AnWhile in
           ∙ ap (2 +_) (length-annos-same {c₁ = c₁} h)
           ∙ length-to-list {xs = inv₂ ∷₁ (q₂ ∷₁ annos c₂)} ⁻¹)
 
+strip-annos-same : ∀ {a b : AnInstr A}
+                 → is-true (strip a ==ⁱ strip b)
+                 → annos a ＝ annos b
+                 → a ＝ b
+strip-annos-same {a = AnSkip p₁}                {b = AnSkip p₂}                eqs eqa = ap AnSkip (∶+-inj eqa .snd)
+strip-annos-same {a = AnAssign x e₁ p₁}         {b = AnAssign y e₂ p₂}         eqs eqa =
+  let h = and-true-≃ {x = ⌊ x ≟ y ⌋} {y = e₁ ==ᵃᵉ e₂} $ eqs in
+    ap² (λ x y → AnAssign x y p₁) (true-reflects discrete-reflects! (h .fst))
+                                  (true-reflects (reflects-aexpr e₁ e₂) (h .snd))
+  ∙ ap (AnAssign y e₂) (∶+-inj eqa .snd)
+strip-annos-same {a = AnSeq a₁ a₂}              {b = AnSeq b₁ b₂}              eqs eqa =
+  let h = and-true-≃ {x = strip a₁ ==ⁱ strip b₁} {y = strip a₂ ==ⁱ strip b₂} $ eqs
+      h2 = ++₁-same-inj (length-annos-same {c₁ = a₁} (h .fst)) eqa
+    in
+  ap² AnSeq (strip-annos-same (h .fst) (h2 .fst)) (strip-annos-same (h .snd) (h2 .snd))
+strip-annos-same {a = AnITE b₁ p₁ a₁ p₂ a₂ q₁}  {b = AnITE b₂ p₃ a₃ p₄ a₄ q₂}  eqs eqa =
+  let h = and-true-≃ {x = b₁ ==ᵇᵉ b₂} {y = (strip a₁ ==ⁱ strip a₃) and (strip a₂ ==ⁱ strip a₄)} $ eqs
+      h2 = and-true-≃ {x = strip a₁ ==ⁱ strip a₃} {y = strip a₂ ==ⁱ strip a₄} $ h .snd
+      h3 = ∶+-inj eqa
+      h4 = ++₁-same-inj (ap suc (length-annos-same {c₁ = a₁} (h2 .fst))) (to-list-inj (h3 .fst))
+      h5 = ∷₁-inj (h4 .fst)
+      h6 = ∷₁-inj (h4 .snd)
+    in
+    ap² (λ x y → AnITE x y a₁ p₂ a₂ q₁) (true-reflects (reflects-bexpr b₁ b₂) (h .fst))
+                                        (h5 .fst)
+  ∙ ap² (λ x y → AnITE b₂ p₃ x y a₂ q₁) (strip-annos-same (h2 .fst) (h5 .snd)) (h6 .fst)
+  ∙ ap² (AnITE b₂ p₃ a₃ p₄) (strip-annos-same (h2 .snd) (h6 .snd)) (h3 .snd)
+strip-annos-same {a = AnWhile inv₁ b₁ p₁ a₁ q₁} {b = AnWhile inv₂ b₂ p₂ a₂ q₂} eqs eqa =
+  let h = and-true-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip a₁ ==ⁱ strip a₂} $ eqs
+      h2 = ∶+-inj eqa
+      h3 = ∷₁-inj (to-list-inj (h2 .fst))
+      h4 = ∷₁-inj (h3 .snd)
+    in
+    ap² (λ x y → AnWhile x y p₁ a₁ q₁) (h3 .fst) (true-reflects (reflects-bexpr b₁ b₂) (h .fst))
+  ∙ ap² (λ x y → AnWhile inv₂ b₂ x y q₁) (h4 .fst) (strip-annos-same (h .snd) (h4 .snd))
+  ∙ ap (AnWhile inv₂ b₂ p₂ a₂) (h2 .snd)
+
 -- case reflection
 
 opaque

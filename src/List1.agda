@@ -46,6 +46,32 @@ _∶+₁_ : List1 A → A → List1 A
 xs ∶+₁ x = to-list xs ∶+ x
 
 -- basic properties
+∶+-inj : {A : 𝒰 ℓ} {ix iy : List A} {lx ly : A}
+       → ix ∶+ lx ＝ iy ∶+ ly → (ix ＝ iy) × (lx ＝ ly)
+∶+-inj e = (ap init e) , (ap last e)
+
+∷₁-inj : {x y : A} {xs ys : List1 A}
+       → x ∷₁ xs ＝ y ∷₁ ys → (x ＝ y) × (xs ＝ ys)
+∷₁-inj {xs = ix ∶+ lx} {ys = iy ∶+ ly} e =
+  let h = ∶+-inj e in
+  ∷-head-inj (h .fst) , ap² _∶+_ (∷-tail-inj (h .fst)) (h .snd)
+
+++₁-same-inj : {xs ys zs ws : List1 A}
+             → length₁ xs ＝ length₁ ys
+             → xs ++₁ zs ＝ ys ++₁ ws → (xs ＝ ys) × (zs ＝ ws)
+++₁-same-inj {xs = ix ∶+ lx} {ys = iy ∶+ ly} {zs = iz ∶+ lz} {ws = iw ∶+ lw} le e =
+  let e1 = ∶+-inj e
+      e2 = ++-same-inj ix iy (suc-inj le) (e1 .fst)
+    in
+  ap² _∶+_ (e2 .fst) (∷-head-inj (e2 .snd)) , ap² _∶+_ (∷-tail-inj (e2 .snd)) (e1 .snd)
+
+to-list-inj : {xs ys : List1 A}
+            → to-list xs ＝ to-list ys
+            → xs ＝ ys
+to-list-inj {xs = ix ∶+ lx} {ys = iy ∶+ ly} e =
+  let h = snoc-inj e in
+  ap² _∶+_ (h .fst) (h .snd)
+
 ∶+₁-++₁ : {xs : List1 A} {x : A} → xs ∶+₁ x ＝ xs ++₁ [ x ]₁
 ∶+₁-++₁ {xs = init ∶+ last} {x} = ap (_∶+ x) (snoc-append init)
 
@@ -66,6 +92,33 @@ length₁-++ {xs = ix ∶+ lx} {ys = iy ∶+ ly} = ap suc (++-length ix (lx ∷ 
 
 All2₁ : (A → A → 𝒰 ℓ′) → List1 A → List1 A → 𝒰 (level-of-type A ⊔ ℓ′)
 All2₁ R (ix ∶+ lx) (iy ∶+ ly) = All2 R ix iy × R lx ly
+
+All2₁-is-of-hlevel
+  : (n : HLevel) {xs ys : List1 A} {R : A → A → 𝒰 ℓ′}
+  → (∀ x y → is-of-hlevel (suc n) (R x y))
+  → is-of-hlevel (suc n) (All2₁ R xs ys)
+All2₁-is-of-hlevel n {ix ∶+ lx} {iy ∶+ ly} hl =
+  ×-is-of-hlevel (suc n) (All2-is-of-hlevel n hl) (hl lx ly)
+
+-- monotype versions
+all2₁-refl : {as : List1 A} {P : A → A → 𝒰 ℓ′}
+           → (∀ a → P a a)
+           → All2₁ P as as
+all2₁-refl {as = ia ∶+ la} pr = all2-refl pr , pr la
+
+all2₁-antisym : {as bs : List1 A}
+                {P : A → A → 𝒰 ℓ′}
+              → (∀ a b → P a b → P b a → a ＝ b)
+              → All2₁ P as bs → All2₁ P bs as → as ＝ bs
+all2₁-antisym {as = ia ∶+ la} {bs = ib ∶+ lb} pa (abs , lab) (bas , lba) =
+  ap² _∶+_ (all2-antisym pa abs bas) (pa la lb lab lba)
+
+all2₁-trans : {as bs cs : List1 A}
+              {P : A → A → 𝒰 ℓ′}
+            → (∀ a b c → P a b → P b c → P a c)
+            → All2₁ P as bs → All2₁ P bs cs → All2₁ P as cs
+all2₁-trans {as = ia ∶+ la} {bs = ib ∶+ lb} {cs = ic ∶+ lc} pr (abs , lab) (bcs , lbc) =
+  all2-trans pr abs bcs , pr la lb lc lab lbc
 
 All2-∶∶₁-l : {R : A → A → 𝒰 ℓ′} {x y : A}
           → {xs ys : List1 A}
@@ -143,3 +196,4 @@ all2?-∶+₁ : {r : A → A → Bool} {x y : A}
          → length₁ xs ＝ length₁ ys
          → all2?₁ r (xs ∶+₁ x) (ys ∶+₁ y) ＝ all2?₁ r xs ys and r x y
 all2?-∶+₁ {r} {x} {y} {xs} {ys} e = ap² (all2?₁ r) (∶+₁-++₁ {xs = xs}) (∶+₁-++₁ {xs = ys}) ∙ all2?-++₁ e
+
