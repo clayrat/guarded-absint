@@ -13,13 +13,13 @@ open import Data.List.Correspondences.Binary.All2
 open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects renaming (dmap to dmapʳ)
 
+open import Combinatorics.Power
+
 open import List1
 open import Nipkow.Lang
 open import Nipkow.OpSem
 open import Nipkow.ACom
 open import Nipkow.State as S
-
--- version with a propositional leq
 
 module CollsemA
   (A : 𝒰 (ℓsuc 0ℓ))
@@ -244,52 +244,23 @@ module CollsemA
 open S.State ℕ 0
 
 SetState : 𝒰 (ℓsuc 0ℓ)
-SetState = State → 𝒰
+SetState = ℙ State 0ℓ
 
-_∈ˢ_ : State → SetState → 𝒰
-s ∈ˢ ss = ss s
-
-mapSS : (State → State) → SetState → SetState
-mapSS f ss s = Σ[ s' ꞉ State ] (s ＝ f s') × ss s'
-
-ctramapSS : (State → State) → SetState → SetState
-ctramapSS f ss = ss ∘ f
-
-univSS : SetState
-univSS _ = ⊤
-
-supSS : SetState → SetState → SetState
-supSS x y s = x s ⊎ y s
-
-leqSS : SetState → SetState → 𝒰
-leqSS s1 s2 = (x : State) → s1 x → s2 x
-
-leq-supSS-r1 : ∀ {x a b} → leqSS x a → leqSS x (supSS a b)
-leq-supSS-r1 la st h = inl (la st h)
-
-leq-supSS-r2 : ∀ {x a b} → leqSS x b → leqSS x (supSS a b)
-leq-supSS-r2 lb st h = inr (lb st h)
-
-leq-supS-l : ∀ {x a b} → leqSS a x → leqSS b x → leqSS (supSS a b) x
-leq-supS-l la lb st (inl as) = la st as
-leq-supS-l la lb st (inr bs) = lb st bs
-
-open CollsemA SetState supSS leqSS
-              (λ {x} {a} {b} → leq-supSS-r1 {x} {a} {b})
-              (λ {x} {a} {b} → leq-supSS-r2 {x} {a} {b})
-              (λ {x} {a} {b} → leq-supS-l {x} {a} {b})
+open CollsemA SetState _∪_ _⊆_
+                        (λ {x} {a} {b} → ⊆-∪-r-l {A = a} {B = b} {C = x})
+                        (λ {x} {a} {b} → ⊆-∪-r-r {A = a} {B = b} {C = x})
+                        (λ {x} {a} {b} → ⊆-∪-l   {A = a} {B = b} {C = x})
 
 step : SetState → AnInstr SetState → AnInstr SetState
-step = stepA (λ x e → mapSS (λ s → stupd x (aval s e) s))
-             (λ b S s → is-true (bval s b) × S s)
+step = stepA (λ x e → ℙ-map' (λ s → stupd x (aval s e) s))
+              λ b S s → el! (is-true (bval s b) × s ∈ S)
 
 mono2-step : ∀ {c₁ c₂}
            → c₁ ≤ⁱ c₂
-           → ∀ {s₁ s₂} → leqSS s₁ s₂ → step s₁ c₁ ≤ⁱ step s₂ c₂
+           → ∀ {s₁ s₂} → s₁ ⊆ s₂ → step s₁ c₁ ≤ⁱ step s₂ c₂
 mono2-step =
-  mono2-stepA
-    (λ {x} {e} {s₁} {s₂} le s → λ where (s' , eq , S) → s' , eq , le s' S)
-    (λ {b} {s₁} {s₂} le s bf → bf .fst , le s (bf .snd))
+  mono2-stepA (λ le → map (second (second le)))
+              (λ le → second le)
 
 strip-step : ∀ {s} {c} → strip (step s c) ＝ strip c
 strip-step {c} = strip-stepA c
@@ -297,67 +268,80 @@ strip-step {c} = strip-stepA c
 {- Relation to big-step semantics -}
 big-step-post-step : ∀ {s s' i a ss}
                    → Exec i s s' → strip a ＝ i
-                   → s ∈ˢ ss
+                   → s ∈ ss
                    → step ss a ≤ⁱ a
-                   → s' ∈ˢ post a
-big-step-post-step {s} .{s' = s}    .{i = Skip}        {a} {ss}  ExSkip                            seq sin stleq =
+                   → s' ∈ post a
+big-step-post-step {s} .{s' = s}    .{i = Skip}        {a} {ss}  ExSkip                                 seq sin stleq =
   let (p , eq) = strip-skip-r seq
-      le = skip-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le = skip-≤ⁱ-r-id {s = λ z → el! ⌞ z ∈ ss ⌟} {s' = λ z → el! ⌞ z ∈ strip-skip-r seq .fst ⌟} $
+           subst (λ q → step ss q ≤ⁱ q) eq stleq
    in
-  subst (λ q → s ∈ˢ post q) (eq ⁻¹) (le s sin)
-big-step-post-step {s}  {s'}        .{i = Assign x e}  {a} {ss} (ExAssign {x} {e} upd)             seq sin stleq =
+  subst (λ q → s ∈ post q) (eq ⁻¹) (le sin)
+big-step-post-step {s}  {s'}        .{i = Assign x e}  {a} {ss} (ExAssign {x} {e} upd)                  seq sin stleq =
   let (p , eq) = strip-assign-r seq
-      le = assign-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le = assign-≤ⁱ-r-id {s = λ z → el! (∃[ w ꞉ State ] (z ＝ stupd x (aval w e) w) × (w ∈ ss))}
+                          {s' = λ z → el! ⌞ z ∈ strip-assign-r seq .fst ⌟}
+                          $
+           subst (λ q → step ss q ≤ⁱ q) eq stleq
     in
-  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) (le s' (s , upd , sin))
-big-step-post-step {s}  {s'}        .{i = Seq i₁ i₂}   {a} {ss} (ExSeq {i₁} {i₂} ex₁ ex₂)          seq sin stleq =
+  subst (λ q → s' ∈ post q) (eq ⁻¹) (le ∣ (s , upd , sin) ∣₁)
+big-step-post-step {s}  {s'}        .{i = Seq i₁ i₂}   {a} {ss} (ExSeq {i₁} {i₂} ex₁ ex₂)               seq sin stleq =
   let (a₁ , a₂ , eq , eq₁ , eq₂) = strip-seq-r seq
       le12 = seq-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
       le1 = le12 .fst
       le2 = le12 .snd
     in
-  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
+  subst (λ q → s' ∈ post q) (eq ⁻¹) $
   big-step-post-step {a = a₂} {ss = post a₁}
     ex₂ eq₂ (big-step-post-step {a = a₁} ex₁ eq₁ sin le1) le2
-big-step-post-step {s}  {s'}        .{i = ITE b i₁ i₂} {a} {ss} (ExITET {b} {i₁} {i₂} bt ex)       seq sin stleq =
+big-step-post-step {s}  {s'}        .{i = ITE b i₁ i₂} {a} {ss} (ExITET {b} {i₁} {i₂} bt ex)            seq sin stleq =
   let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r seq
-      le12345 = ite-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le12345 = ite-≤ⁱ-r-id {q₁ = λ z → el! ((z ∈ post a₁) ⊎₁ (z ∈ post a₂))}
+                            {q₂ = λ z → el! ⌞ z ∈ strip-ite-r seq .snd .snd .snd .snd .fst ⌟} $
+                subst (λ q → step ss q ≤ⁱ q) eq stleq
       le1 = le12345 .fst
       le2 = le12345 .snd .fst
       le5 = le12345 .snd .snd .snd .snd
     in
-  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
-  le5 s' $
-  inl (big-step-post-step {a = a₁} {ss = p₁} ex eq₁ (le1 s (bt , sin)) le2)
-big-step-post-step {s}  {s'}        .{i = ITE b i₁ i₂} {a} {ss} (ExITEF {b} {i₁} {i₂} bf ex)       seq sin stleq =
+  subst (λ q → s' ∈ post q) (eq ⁻¹) $
+  le5 $
+  ∣ inl (big-step-post-step {a = a₁} {ss = p₁} ex eq₁ (le1 (bt , sin)) le2) ∣₁
+big-step-post-step {s}  {s'}        .{i = ITE b i₁ i₂} {a} {ss} (ExITEF {b} {i₁} {i₂} bf ex)            seq sin stleq =
   let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r seq
-      le12345 = ite-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le12345 = ite-≤ⁱ-r-id {q₁ = λ z → el! ((z ∈ post a₁) ⊎₁ (z ∈ post a₂))}
+                            {q₂ = λ z → el! ⌞ z ∈ strip-ite-r seq .snd .snd .snd .snd .fst ⌟} $
+                subst (λ q → step ss q ≤ⁱ q) eq stleq
       le3 = le12345 .snd .snd .fst
       le4 = le12345 .snd .snd .snd .fst
       le5 = le12345 .snd .snd .snd .snd
     in
-  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
-  le5 s' $
-  inr (big-step-post-step {a = a₂} {ss = p₂} ex eq₂ (le3 s (bf , sin)) le4)
+  subst (λ q → s' ∈ post q) (eq ⁻¹) $
+  le5 $
+  ∣ inr (big-step-post-step {a = a₂} {ss = p₂} ex eq₂ (le3 (bf , sin)) le4) ∣₁
 big-step-post-step {s}  .{s' = s''} .{i = While b i}  {a} {ss} (ExWhileT {s'} {s''} {b} {i} bt ex₁ ex₂) seq sin stleq =
   let (inv , p , a₀ , q , eq , eq₁) = strip-while-r seq
-      le1234 = while-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le1234 = while-≤ⁱ-r-id {q₁ = λ z → el! (is-true (bval z (BNot b)) × z ∈ inv)}
+                             {q₂ = λ z → el! ⌞ z ∈ strip-while-r seq .snd .snd .snd .fst ⌟} $
+               subst (λ q → step ss q ≤ⁱ q) eq stleq
       le1 = le1234 .fst
       le2 = le1234 .snd .fst
       le3 = le1234 .snd .snd .fst
       le4 = le1234 .snd .snd .snd
     in
-  subst (λ q → s'' ∈ˢ post q) (eq ⁻¹) $
+  subst (λ q → s'' ∈ post q) (eq ⁻¹) $
   big-step-post-step {s' = s''} {a = AnWhile inv b p a₀ q} {ss = post a₀} ex₂ (ap (While b) eq₁)
-    (big-step-post-step {s' = s'} {a = a₀} {ss = p} ex₁ eq₁ (le2 s (bt , le1 s (inl sin))) le3)
-    (while-≤ⁱ-l inv p a₀ q refl (λ z → le1 z ∘ [ inr , inr ]ᵤ) le2 le3 le4)
-big-step-post-step {s}  {s'}        .{i = While b i}  {a} {ss} (ExWhileF {b} {i} bf)               seq sin stleq =
+    (big-step-post-step {s' = s'} {a = a₀} {ss = p} ex₁ eq₁ (le2 (bt , le1 ∣ inl sin ∣₁)) le3)
+    (while-≤ⁱ-l {q₁ = λ z → el! (is-true (bval z (BNot b)) × z ∈ inv)}
+       inv p a₀ q refl
+       (le1 ∘ map [ inr , inr ]ᵤ) le2 le3 le4)
+big-step-post-step {s}  {s'}        .{i = While b i}  {a} {ss} (ExWhileF {b} {i} bf)                    seq sin stleq =
   let (inv , p , a₀ , q , eq , eq₁) = strip-while-r seq
-      le1234 = while-≤ⁱ-r-id $ subst (λ q → step ss q ≤ⁱ q) eq stleq
+      le1234 = while-≤ⁱ-r-id {q₁ = λ z → el! (is-true (bval z (BNot b)) × z ∈ inv)}
+                             {q₂ = λ z → el! ⌞ z ∈ strip-while-r seq .snd .snd .snd .fst ⌟} $
+               subst (λ q → step ss q ≤ⁱ q) eq stleq
       le1 = le1234 .fst
       le4 = le1234 .snd .snd .snd
     in
-  subst (λ q → s' ∈ˢ post q) (eq ⁻¹) $
-  le4 s' $
-  bf , le1 s (inl sin)
-
+  subst (λ q → s' ∈ post q) (eq ⁻¹) $
+  le4 $
+  bf , (le1 ∣ inl sin ∣₁)
