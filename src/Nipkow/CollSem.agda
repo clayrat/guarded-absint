@@ -36,10 +36,10 @@ module AnInstrLeq
   c₁ ≤ⁱ c₂ = (strip c₁ ＝ strip c₂) × All2₁ leq (annos c₁) (annos c₂)
 
   opaque
-    skip-≤ⁱ-l : ∀ {s c}
-              → (s' : A) → c ＝ AnSkip s' → leq s s'
+    skip-≤ⁱ-l : ∀ {s c s'}
+              → c ＝ AnSkip s' → leq s s'
               → AnSkip s ≤ⁱ c
-    skip-≤ⁱ-l {s} s' eq le = subst (AnSkip s ≤ⁱ_) (eq ⁻¹) (refl , [] , le)
+    skip-≤ⁱ-l {s} eq le = subst (AnSkip s ≤ⁱ_) (eq ⁻¹) (refl , [] , le)
 
     skip-≤ⁱ-r : ∀ {s c}
               → AnSkip s ≤ⁱ c
@@ -53,10 +53,10 @@ module AnInstrLeq
                  → leq s s'
     skip-≤ⁱ-r-id {s} {s'} (h1 , h2 , h3) = h3
 
-    assign-≤ⁱ-l : ∀ {x e s c}
-                → (s' : A) → c ＝ AnAssign x e s' → leq s s'
+    assign-≤ⁱ-l : ∀ {x e s c s'}
+                → c ＝ AnAssign x e s' → leq s s'
                 → AnAssign x e s ≤ⁱ c
-    assign-≤ⁱ-l {x} {e} {s} s' eq le =
+    assign-≤ⁱ-l {x} {e} {s} eq le =
       subst (AnAssign x e s ≤ⁱ_) (eq ⁻¹) (refl , [] , le)
 
     assign-≤ⁱ-r : ∀ {x e s c}
@@ -71,10 +71,10 @@ module AnInstrLeq
                    → leq s s'
     assign-≤ⁱ-r-id {x} {e} {s} {s'} (h1 , h2 , h3) = h3
 
-    seq-≤ⁱ-l : ∀ {c₁ c₂ c}
-             → (c₃ c₄ : AnInstr A) → c ＝ AnSeq c₃ c₄ → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
+    seq-≤ⁱ-l : ∀ {c₁ c₂ c c₃ c₄}
+             → c ＝ AnSeq c₃ c₄ → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
              → AnSeq c₁ c₂ ≤ⁱ c
-    seq-≤ⁱ-l {c₁} {c₂} c₃ c₄ eq (e₁ , le₁) (e₂ , le₂) =
+    seq-≤ⁱ-l {c₁} {c₂} eq (e₁ , le₁) (e₂ , le₂) =
       subst (AnSeq c₁ c₂ ≤ⁱ_) (eq ⁻¹)
       (ap² Seq e₁ e₂ , All2₁-++₁ le₁ le₂)
 
@@ -100,12 +100,11 @@ module AnInstrLeq
         in
       subst (c₁ ≤ⁱ_) (eq₁ ⁻¹) le₁ , subst (c₂ ≤ⁱ_) (eq₂ ⁻¹) le₂
 
-    ite-≤ⁱ-l : ∀ {b p₁ c₁ p₂ c₂ q₁ c}
-             → (p₃ : A) → (c₃ : AnInstr A) → (p₄ : A) → (c₄ : AnInstr A) → (q₂ : A)
+    ite-≤ⁱ-l : ∀ {b p₁ c₁ p₂ c₂ q₁ c p₃ c₃ p₄ c₄ q₂}
              → c ＝ AnITE b p₃ c₃ p₄ c₄ q₂
              → leq p₁ p₃ → c₁ ≤ⁱ c₃ → leq p₂ p₄ → c₂ ≤ⁱ c₄ → leq q₁ q₂
              → AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ c
-    ite-≤ⁱ-l {b} {p₁} {c₁} {p₂} {c₂} {q₁} p₃ c₃ p₄ c₄ q₂ eq le₁ (e₂ , le₂) le₃ (e₄ , le₄) le₅ =
+    ite-≤ⁱ-l {b} {p₁} {c₁} {p₂} {c₂} {q₁} eq le₁ (e₂ , le₂) le₃ (e₄ , le₄) le₅ =
       subst (AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ_) (eq ⁻¹)
         ( ap² (ITE b) e₂ e₄
         , All2₁-∶+₁-r (All2₁-++₁ (All2-∶∶₁-r le₁ le₂) (All2-∶∶₁-r le₃ le₄)) le₅)
@@ -145,13 +144,12 @@ module AnInstrLeq
       , subst (c₂ ≤ⁱ_) (eq₄ ⁻¹) le₄
       , subst (leq q₁) (eq₅ ⁻¹) le₅
 
-    while-≤ⁱ-l : ∀ {inv₁ b p₁ c₁ q₁ c}
-               → (inv₂ : A) (p₂ : A) (c₂ : AnInstr A) (q₂ : A)
+    while-≤ⁱ-l : ∀ {inv₁ b p₁ c₁ q₁ c inv₂ p₂ c₂ q₂}
                → c ＝ AnWhile inv₂ b p₂ c₂ q₂
                → leq inv₁ inv₂ → leq p₁ p₂
                → c₁ ≤ⁱ c₂ → leq q₁ q₂
                → AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ c
-    while-≤ⁱ-l {inv₁} {b} {p₁} {c₁} {q₁} {c} inv₂ p₂ c₂ q₂ eq le₁ le₂ (e₃ , le₃) le₄ =
+    while-≤ⁱ-l {inv₁} {b} {p₁} {c₁} {q₁} {c} eq le₁ le₂ (e₃ , le₃) le₄ =
       subst (AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ_) (eq ⁻¹)
         ( ap (While b) e₃
         , All2₁-∶+₁-r (All2-∶∶₁-r le₁ (All2-∶∶₁-r le₂ le₃)) le₄)
@@ -254,140 +252,137 @@ module AnInstrOrd
   anc-lub : ∀ c {I : 𝒰} (F : I → Σ[ a ꞉ AnInstr Ob ] (strip a ＝ c))
           → is-lub (anc-poset c) F (anc-sup c F)
   anc-lub  Skip         F =
-    let s = sup (λ j → let (a , e) = strip-skip-r (F j .snd) in a)
-        sp = suprema (λ j → let (a , e) = strip-skip-r (F j .snd) in a)
+    let a  = sup     λ j → let (a , e) = strip-skip-r (F j .snd) in a
+        sa = suprema λ j → let (a , e) = strip-skip-r (F j .snd) in a
       in
     record {
-      fam≤lub = λ i → F i .snd , subst (λ q → All2₁ _≤_ (annos q) [ s ]₁)
-                                       (let (a , e) = strip-skip-r (F i .snd) in e ⁻¹)
-                                       ([] , sp .fam≤lub i)
+      fam≤lub = λ i → subst (_≤ⁱ AnSkip a) (let (a , e) = strip-skip-r (F i .snd) in e ⁻¹) $
+                      skip-≤ⁱ-l refl $
+                      sa .fam≤lub i
     ; least = λ where (a' , eq) f →
-                          let (a1 , eq1) = strip-skip-r eq in
-                          eq ⁻¹ , subst (λ q → All2₁ _≤_ [ s ]₁ (annos q) ) (eq1 ⁻¹)
-                                        ([] , sp .least a1
-                                               λ j → subst (_≤ⁱ AnSkip a1) (let (a , e) = strip-skip-r (F j .snd) in e)
-                                                           (subst (F j .fst ≤ⁱ_) eq1 (f j))
-                                                           .snd .snd)
+                         let (a1 , eq1) = strip-skip-r eq in
+                         subst (AnSkip a ≤ⁱ_) (eq1 ⁻¹) $
+                         skip-≤ⁱ-l refl $
+                         sa .least a1 λ i → skip-≤ⁱ-r-id $
+                                            subst (_≤ⁱ AnSkip a1) (let (a , e) = strip-skip-r (F i .snd) in e) $
+                                            subst (F i .fst ≤ⁱ_) eq1 (f i)
     }
   anc-lub (Assign x e)  F =
-    let s = sup (λ j → let (a , e) = strip-assign-r (F j .snd) in a)
-        sp = suprema (λ j → let (a , e) = strip-assign-r (F j .snd) in a)
+    let a  = sup     λ j → let (a , e) = strip-assign-r (F j .snd) in a
+        sa = suprema λ j → let (a , e) = strip-assign-r (F j .snd) in a
       in
     record {
-      fam≤lub = λ i → F i .snd , subst (λ q → All2₁ _≤_ (annos q) [ s ]₁)
-                                       (let (a , e) = strip-assign-r (F i .snd) in e ⁻¹)
-                                       ([] , sp .fam≤lub i)
+      fam≤lub = λ i → subst (_≤ⁱ AnAssign x e a) (let (a , e) = strip-assign-r (F i .snd) in e ⁻¹) $
+                      assign-≤ⁱ-l refl $
+                      sa .fam≤lub i
     ; least = λ where (a' , eq) f →
                           let (a1 , eq1) = strip-assign-r eq in
-                          eq ⁻¹ , subst (λ q → All2₁ _≤_ [ s ]₁ (annos q) ) (eq1 ⁻¹)
-                                        ([] , sp .least a1
-                                               λ j → subst (_≤ⁱ AnAssign x e a1) (let (_ , e) = strip-assign-r (F j .snd) in e)
-                                                           (subst (F j .fst ≤ⁱ_) eq1 (f j))
-                                                           .snd .snd)
+                          subst (AnAssign x e a ≤ⁱ_) (eq1 ⁻¹) $
+                          assign-≤ⁱ-l refl $
+                          sa .least a1 λ i → assign-≤ⁱ-r-id $
+                                             subst (_≤ⁱ AnAssign x e a1) (let (_ , e) = strip-assign-r (F i .snd) in e) $
+                                             subst (F i .fst ≤ⁱ_) eq1 (f i)
     }
   anc-lub (Seq c₁ c₂)   F =
-    let (a₁ , e₁) = anc-sup c₁ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₁ , e₁
-        (a₂ , e₂) = anc-sup c₂ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₂ , e₂
-        ih₁ = anc-lub c₁ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₁ , e₁
-        ih₂ = anc-lub c₂ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₂ , e₂
+    let (a₁ , _) = anc-sup c₁ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₁ , e₁
+        ih₁      = anc-lub c₁ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₁ , e₁
+        (a₂ , _) = anc-sup c₂ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₂ , e₂
+        ih₂      = anc-lub c₂ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₂ , e₂
      in
     record {
-      fam≤lub = λ i →   F i .snd ∙ ap² Seq (e₁ ⁻¹) (e₂ ⁻¹)
-                      , subst (λ q → All2₁ _≤_ (annos q) (annos a₁ ++₁ annos a₂))
-                               (strip-seq-r (F i .snd) .snd .snd .fst ⁻¹)
-                               (All2₁-++₁ (ih₁ .fam≤lub i .snd) (ih₂ .fam≤lub i .snd))
+      fam≤lub = λ i → subst (_≤ⁱ AnSeq a₁ a₂) (let (_ , _ , eq' , _ , _) = strip-seq-r (F i .snd) in eq' ⁻¹) $
+                      seq-≤ⁱ-l refl (ih₁ .fam≤lub i) (ih₂ .fam≤lub i)
     ; least = λ where (a' , eq) f →
                           let (a1 , a2 , eq0 , eq1 , eq2) = strip-seq-r eq in
-                            ap² Seq e₁ e₂ ∙ eq ⁻¹
-                          , subst (λ q → All2₁ _≤_ (annos a₁ ++₁ annos a₂) (annos q))
-                                  (eq0 ⁻¹)
-                                  (All2₁-++₁
-                                     (ih₁ .least (a1 , eq1) (λ i → let ele12 = subst (_≤ⁱ AnSeq a1 a2) (let (_ , _ , e , _ , _) = strip-seq-r (F i .snd) in e) $
-                                                                               subst (F i .fst ≤ⁱ_) eq0 (f i)
-                                                                       (eqs , _ ) = Seq-inj (ele12 .fst)
-                                                                     in
-                                                                    eqs , All2₁-split (length-annos-same {c₁ = strip-seq-r (F i .snd) .fst} {c₂ = a1}
-                                                                                         (reflects-true (reflects-instr (strip (strip-seq-r (F i .snd) .fst)) (strip a1)) eqs))
-                                                                             (ele12 .snd) .fst)
-                                          .snd)
-                                     (ih₂ .least (a2 , eq2) (λ i → let ele12 = subst (_≤ⁱ AnSeq a1 a2) (let (_ , _ , e , _ , _) = strip-seq-r (F i .snd) in e) $
-                                                                               subst (F i .fst ≤ⁱ_) eq0 (f i)
-                                                                       (eqs1 , eqs2) = Seq-inj (ele12 .fst)
-                                                                     in
-                                                                    eqs2 , All2₁-split (length-annos-same {c₁ = strip-seq-r (F i .snd) .fst} {c₂ = a1}
-                                                                                         (reflects-true (reflects-instr (strip (strip-seq-r (F i .snd) .fst)) (strip a1)) eqs1))
-                                                                             (ele12 .snd) .snd)
-                                          .snd))
+                          subst (AnSeq a₁ a₂ ≤ⁱ_) (eq0 ⁻¹) $
+                          seq-≤ⁱ-l refl
+                            (ih₁ .least (a1 , eq1) λ i → let le12 = seq-≤ⁱ-r-id $
+                                                                    subst (_≤ⁱ AnSeq a1 a2) (let (_ , _ , e , _ , _) = strip-seq-r (F i .snd) in e) $
+                                                                    subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                         le12 .fst)
+                            (ih₂ .least (a2 , eq2) λ i → let le12 = seq-≤ⁱ-r-id $
+                                                                    subst (_≤ⁱ AnSeq a1 a2) (let (_ , _ , e , _ , _) = strip-seq-r (F i .snd) in e) $
+                                                                    subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                         le12 .snd)
     }
   anc-lub (ITE b c₁ c₂) F =
-    let p₁ = sup λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₁
-        (a₁ , e₁) = anc-sup c₁ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₁ , e₁
-        p₂ = sup λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₂
-        (a₂ , e₂) = anc-sup c₂ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₂ , e₂
-        q = sup λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in q
-        ih₁ = anc-lub c₁ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₁ , e₁
-        ih₂ = anc-lub c₂ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₂ , e₂
+    let p₁  = sup     λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₁
+        sp₁ = suprema λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₁
+        (a₁ , _) = anc-sup c₁ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₁ , e₁
+        ih₁      = anc-lub c₁ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₁ , e₁
+        p₂  = sup     λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₂
+        sp₂ = suprema λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₂
+        (a₂ , _) = anc-sup c₂ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₂ , e₂
+        ih₂      = anc-lub c₂ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₂ , e₂
+        q  = sup     λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in q
+        sq = suprema λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in q
       in
     record {
-      fam≤lub = λ i →   F i .snd ∙ ap² (ITE b) (e₁ ⁻¹) (e₂ ⁻¹)
-                      , subst (λ z → All2₁ _≤_ (annos z) (((p₁ ∷₁ annos a₁) ++₁ (p₂ ∷₁ annos a₂)) ∶+₁ q))
-                               (strip-ite-r (F i .snd) .snd .snd .snd .snd .snd .fst ⁻¹)
-                               (All2₁-∶+₁-r
-                                  (All2₁-++₁
-                                    (All2-∶∶₁-r (suprema (λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₁) .fam≤lub i)
-                                               (ih₁ .fam≤lub i .snd))
-                                    (All2-∶∶₁-r (suprema (λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₂) .fam≤lub i)
-                                               (ih₂ .fam≤lub i .snd)))
-                                  (suprema (λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in q) .fam≤lub i))
+      fam≤lub = λ i → subst (_≤ⁱ AnITE b p₁ a₁ p₂ a₂ q) (let (_ , _ , _ , _ , _ , eq' , _ , _) = strip-ite-r (F i .snd) in eq' ⁻¹) $
+                      ite-≤ⁱ-l refl (sp₁ .fam≤lub i) (ih₁ .fam≤lub i) (sp₂ .fam≤lub i) (ih₂ .fam≤lub i) (sq .fam≤lub i)
     ; least = λ where (a' , eq) f →
                           let (p1 , a1 , p2 , a2 , q0 , eq0 , e1 , e2) = strip-ite-r eq in
-                            ap² (ITE b) e₁ e₂ ∙ eq ⁻¹
-                          , subst (λ z → All2₁ _≤_ (((p₁ ∷₁ annos a₁) ++₁ (p₂ ∷₁ annos a₂)) ∶+₁ q) (annos z))
-                                  (eq0 ⁻¹)
-                                  (All2₁-∶+₁-r
-                                    (All2₁-++₁
-                                      (All2-∶∶₁-r
-                                         (suprema (λ i → let p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂ = strip-ite-r (F i .snd) in p₁)
-                                           .least p1 {!!})
-                                         (ih₁ .least {!!} {!!} .snd))
-                                      (All2-∶∶₁-r
-                                         (suprema (λ i → let p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂ = strip-ite-r (F i .snd) in p₂)
-                                           .least p2 {!!})
-                                         (ih₂ .least {!!} {!!} .snd)))
-                                    (suprema (λ i → let p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂ = strip-ite-r (F i .snd) in q)
-                                      .least q0 λ i → subst (_≤ⁱ AnITE b p1 a1 p2 a2 q0) (let (_ , _ , _ , _ , _ , e' , _ , _) = strip-ite-r (F i .snd) in e')
-                                                            (subst (F i .fst ≤ⁱ_) eq0 (f i))
-                                                            .snd .snd))
+                          subst (AnITE b p₁ a₁ p₂ a₂ q ≤ⁱ_) (eq0 ⁻¹) $
+                          ite-≤ⁱ-l refl
+                            (sp₁ .least p1 λ i → let le12345 = ite-≤ⁱ-r-id $
+                                                               subst (_≤ⁱ AnITE b p1 a1 p2 a2 q0) (let (_ , _ , _ , _ , _ , e' , _ , _) = strip-ite-r (F i .snd) in e') $
+                                                               subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                 le12345 .fst)
+                            (ih₁ .least (a1 , e1) λ i → let le12345 = ite-≤ⁱ-r-id $
+                                                                      subst (_≤ⁱ AnITE b p1 a1 p2 a2 q0) (let (_ , _ , _ , _ , _ , e' , _ , _) = strip-ite-r (F i .snd) in e') $
+                                                                      subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                        le12345 .snd .fst)
+                            (sp₂ .least p2 λ i → let le12345 = ite-≤ⁱ-r-id $
+                                                               subst (_≤ⁱ AnITE b p1 a1 p2 a2 q0) (let (_ , _ , _ , _ , _ , e' , _ , _) = strip-ite-r (F i .snd) in e') $
+                                                               subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                 le12345 .snd .snd .fst)
+                            (ih₂ .least (a2 , e2) λ i → let le12345 = ite-≤ⁱ-r-id $
+                                                                      subst (_≤ⁱ AnITE b p1 a1 p2 a2 q0) (let (_ , _ , _ , _ , _ , e' , _ , _) = strip-ite-r (F i .snd) in e') $
+                                                                      subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                        le12345 .snd .snd .snd .fst)
+                            (sq .least q0 λ i → let le12345 = ite-≤ⁱ-r-id $
+                                                              subst (_≤ⁱ AnITE b p1 a1 p2 a2 q0) (let (_ , _ , _ , _ , _ , e' , _ , _) = strip-ite-r (F i .snd) in e') $
+                                                              subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                le12345 .snd .snd .snd .snd)
     }
   anc-lub (While b c)   F =
+    let inv  = sup     λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in inv
+        sinv = suprema λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in inv
+        p  = sup     λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in p
+        sp = suprema λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in p
+        (a , _) = anc-sup c λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in a , e
+        ih      = anc-lub c λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in a , e
+        q  = sup     λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in q
+        sq = suprema λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in q
+      in
     record {
-      fam≤lub = {!!}
-    ; least = {!!}
+      fam≤lub = λ i → subst (_≤ⁱ AnWhile inv b p a q) (let (_ , _ , _ , _ , eq' , _) = strip-while-r (F i .snd) in eq' ⁻¹) $
+                      while-≤ⁱ-l refl (sinv .fam≤lub i) (sp .fam≤lub i) (ih .fam≤lub i) (sq .fam≤lub i)
+    ; least = λ where (a' , eq) f →
+                        let (inv1 , p1 , a1 , q1 , eq0 , e1) = strip-while-r eq in
+                        subst (AnWhile inv b p a q ≤ⁱ_) (eq0 ⁻¹) $
+                        while-≤ⁱ-l refl
+                          (sinv .least inv1 λ i → let le1234 = while-≤ⁱ-r-id $
+                                                               subst (_≤ⁱ AnWhile inv1 b p1 a1 q1) (let (_ , _ , _ , _ , e' , _) = strip-while-r (F i .snd) in e') $
+                                                               subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                  le1234 .fst)
+                          (sp .least p1 λ i → let le1234 = while-≤ⁱ-r-id $
+                                                           subst (_≤ⁱ AnWhile inv1 b p1 a1 q1) (let (_ , _ , _ , _ , e' , _) = strip-while-r (F i .snd) in e') $
+                                                           subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                              le1234 .snd .fst)
+                          (ih .least (a1 , e1) λ i → let le1234 = while-≤ⁱ-r-id $
+                                                                  subst (_≤ⁱ AnWhile inv1 b p1 a1 q1) (let (_ , _ , _ , _ , e' , _) = strip-while-r (F i .snd) in e') $
+                                                                  subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                                     le1234 .snd .snd .fst)
+                          (sq .least q1 λ i → let le1234 = while-≤ⁱ-r-id $
+                                                           subst (_≤ⁱ AnWhile inv1 b p1 a1 q1) (let (_ , _ , _ , _ , e' , _) = strip-while-r (F i .snd) in e') $
+                                                           subst (F i .fst ≤ⁱ_) eq0 (f i) in
+                                              le1234 .snd .snd .snd)
     }
 
   anc-suplat : (c : Instr) → is-sup-lattice (anc-poset c) 0ℓ
   anc-suplat c .is-sup-lattice.sup = anc-sup c
   anc-suplat c .is-sup-lattice.suprema = anc-lub c
-
-{-
-  anc-ub (While b c)   {I} {F} i =
-    let ih = anc-ub c {I} {F = λ j → let qq = strip-while-r (F j .snd) in
-                               qq .snd .snd .fst , qq .snd .snd .snd .snd .snd} i
-        a = anc-sup c (λ j → let qq = strip-while-r (F j .snd) in
-                             qq .snd .snd .fst , qq .snd .snd .snd .snd .snd)
-        inv = sup λ j → strip-while-r (F j .snd) .fst
-        p = sup λ j → strip-while-r (F j .snd) .snd .fst
-        q = sup λ j → strip-while-r (F j .snd) .snd .snd .snd .fst
-      in
-      F i .snd ∙ ap (While b) (a .snd ⁻¹)
-    , subst (λ z → All2₁ _≤_ (annos z) ((inv ∷₁ (p ∷₁ annos (a .fst))) ∶+₁ q))
-            (strip-while-r (F i .snd) .snd .snd .snd .snd .fst ⁻¹)
-            (All2₁-∶+₁-r
-              (All2-∶∶₁-r (suprema (λ j → strip-while-r (F j .snd) .fst) .fam≤lub i)
-                (All2-∶∶₁-r (suprema (λ j → strip-while-r (F j .snd) .snd .fst) .fam≤lub i)
-                  (ih .snd)))
-              (suprema (λ j → strip-while-r (F j .snd) .snd .snd .snd .fst) .fam≤lub i))
--}
 
 module CollsemA
   (A : 𝒰 (ℓsuc 0ℓ))
@@ -426,22 +421,19 @@ module CollsemA
               → ∀ {s₁ s₂} → leq s₁ s₂ → stepA f g s₁ c₁ ≤ⁱ stepA f g s₂ c₂
   mono2-stepA {f} {g} {c₁ = AnSkip p}              {c₂} fm gm lc {s₁} {s₂} ls =
     let (s' , eq , _) = skip-≤ⁱ-r {c = c₂} lc in
-    skip-≤ⁱ-l {c = stepA f g s₂ c₂} s₂ (ap (stepA f g s₂) eq) ls
+    skip-≤ⁱ-l {c = stepA f g s₂ c₂} (ap (stepA f g s₂) eq) ls
   mono2-stepA {f} {g} {c₁ = AnAssign x e p}        {c₂} fm gm lc {s₁} {s₂} ls =
     let (s' , eq , _) = assign-≤ⁱ-r {c = c₂} lc in
-    assign-≤ⁱ-l {c = stepA f g s₂ c₂} (f x e s₂) (ap (stepA f g s₂) eq) (fm ls)
+    assign-≤ⁱ-l {c = stepA f g s₂ c₂} (ap (stepA f g s₂) eq) (fm ls)
   mono2-stepA {f} {g} {c₁ = AnSeq c₁ c₃}           {c₂} fm gm lc {s₁} {s₂} ls =
     let (a₁ , a₂ , eq , le₁ , le₂) = seq-≤ⁱ-r {c = c₂} lc in
     seq-≤ⁱ-l {c = stepA f g s₂ c₂}
-             (stepA f g s₂ a₁)
-             (stepA f g (post a₁) a₂)
              (ap (stepA f g s₂) eq)
              (mono2-stepA fm gm le₁ ls)
              (mono2-stepA fm gm le₂ (mono-post le₁))
   mono2-stepA {f} {g} {c₁ = AnITE b p₁ c₁ p₂ c₃ q} {c₂} fm gm lc {s₁} {s₂} ls =
     let (p₃ , a₁ , p₄ , a₂ , q₂ , eq , le₁ , le₂ , le₃ , le₄ , _) = ite-≤ⁱ-r {c = c₂} lc in
     ite-≤ⁱ-l {c = stepA f g s₂ c₂}
-             (g b s₂) (stepA f g p₃ a₁) (g (BNot b) s₂) (stepA f g p₄ a₂) (sup (post a₁) (post a₂))
              (ap (stepA f g s₂) eq)
              (gm ls) (mono2-stepA fm gm le₂ le₁)
              (gm ls) (mono2-stepA fm gm le₄ le₃)
@@ -450,7 +442,6 @@ module CollsemA
   mono2-stepA {f} {g} {c₁ = AnWhile inv₁ b p c₁ q} {c₂} fm gm lc {s₁} {s₂} ls =
     let (inv₂ , p₂ , c₀ , q₂ , eq , le₁ , le₂ , le₃ , _) = while-≤ⁱ-r {c = c₂} lc in
     while-≤ⁱ-l {c = stepA f g s₂ c₂}
-               (sup s₂ (post c₀)) (g b inv₂) (stepA f g p₂ c₀) (g (BNot b) inv₂)
                (ap (stepA f g s₂) eq)
                (leq-sup-l (leq-sup-r1 ls) (leq-sup-r2 (mono-post le₃))) (gm le₁)
                (mono2-stepA fm gm le₃ le₂) (gm le₁)
@@ -546,8 +537,8 @@ big-step-post-step {s}  .{s' = s''} .{i = While b i}  {a} {ss} (ExWhileT {s'} {s
   subst (λ q → s'' ∈ post q) (eq ⁻¹) $
   big-step-post-step {s' = s''} {a = AnWhile inv b p a₀ q} {ss = post a₀} ex₂ (ap (While b) eq₁)
     (big-step-post-step {s' = s'} {a = a₀} {ss = p} ex₁ eq₁ (le2 (bt , le1 ∣ inl sin ∣₁)) le3)
-    (while-≤ⁱ-l {q₁ = λ z → el! (is-true (bval z (BNot b)) × z ∈ inv)}
-       inv p a₀ q refl
+    (while-≤ⁱ-l {q₁ = λ z → el! (is-true (bval z (BNot b)) × z ∈ inv)} {q₂ = q}
+       refl
        (le1 ∘ map [ inr , inr ]ᵤ) le2 le3 le4)
 big-step-post-step {s}  {s'}        .{i = While b i}  {a} {ss} (ExWhileF {b} {i} bf)                    seq sin stleq =
   let (inv , p , a₀ , q , eq , eq₁) = strip-while-r seq
