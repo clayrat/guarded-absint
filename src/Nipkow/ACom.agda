@@ -320,3 +320,9 @@ opaque
   strip-while-r {b} {c₀} {c} eq =
     true-reflects (reflects-strip-while c) $
     reflects-true (reflects-instr (While b c₀) (strip c)) (eq ⁻¹)
+
+-- subtype of structurally equal annotated commands
+
+AnStr : 𝒰 ℓ → Instr → 𝒰 ℓ
+AnStr A c = fibre (strip {A = A}) c
+

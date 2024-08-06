@@ -5,9 +5,12 @@ open import Data.Empty
 open import Data.Unit
 open import Data.Bool
 open import Data.Nat
+open import Data.Nat.Order.Minmax
 open import Data.Sum
 open import Data.String
+open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
 open import Data.List
+open import Data.List.Operations.Properties
 open import Data.List.Correspondences.Binary.All2
 open import Data.Reflects
 
@@ -250,6 +253,13 @@ module AnInstrOrd {B : 𝒰}
   open is-basis h
   open AnInstrLeq Ob _≤_
 
+  -- TODO reuse Order.Diagram.Lub.Reasoning
+  P⊥ : Ob
+  P⊥ = sup {I = ⊥} λ ()
+
+  P⊥≤ : ∀ {o} → P⊥ ≤ o
+  P⊥≤ {o} = suprema (λ ()) .least o λ ()
+
   an-poset : Poset (ℓsuc 0ℓ) (ℓsuc 0ℓ)
   an-poset .Poset.Ob                                = AnInstr Ob
   an-poset .Poset._≤_                               = _≤ⁱ_
@@ -262,7 +272,7 @@ module AnInstrOrd {B : 𝒰}
                      (all2₁-antisym (λ _ _ → ≤-antisym) axy ayx)
 
   anc-poset : Instr → Poset (ℓsuc 0ℓ) (ℓsuc 0ℓ)
-  anc-poset c .Poset.Ob = Σ[ a ꞉ AnInstr Ob ] (strip a ＝ c)
+  anc-poset c .Poset.Ob = AnStr Ob c
   anc-poset c .Poset._≤_ (a1 , e1) (a2 , e2) = a1 ≤ⁱ a2  -- TODO try just all2 leq, because strip equality is assumed
   anc-poset c .Poset.≤-thin = ×-is-of-hlevel 1 (instr-is-set (strip _) (strip _))
                                                (All2₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
@@ -273,7 +283,7 @@ module AnInstrOrd {B : 𝒰}
     strip-annos-same (reflects-true (reflects-instr (strip _) (strip _)) exy)
                      (all2₁-antisym (λ _ _ → ≤-antisym) axy ayx)
 
-  anc-sup : ∀ (c : Instr) → {I : 𝒰} → (I → Σ[ a ꞉ AnInstr Ob ] (strip a ＝ c)) → Σ[ a ꞉ AnInstr Ob ] (strip a ＝ c)
+  anc-sup : ∀ (c : Instr) → {I : 𝒰} → (I → AnStr Ob c) → AnStr Ob c
   anc-sup  Skip         F =
     AnSkip (sup λ i → let (a , e) = strip-skip-r (F i .snd) in a) , refl
   anc-sup (Assign x e)  F =
@@ -304,7 +314,7 @@ module AnInstrOrd {B : 𝒰}
             (sup λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in q)
     , ap (While b) e
 
-  anc-lub : ∀ c {I : 𝒰} (F : I → Σ[ a ꞉ AnInstr Ob ] (strip a ＝ c))
+  anc-lub : ∀ c {I : 𝒰} (F : I → AnStr Ob c)
           → is-lub (anc-poset c) F (anc-sup c F)
   anc-lub  Skip         F =
     let a  = sup     λ j → let (a , _) = strip-skip-r (F j .snd) in a
@@ -431,3 +441,49 @@ module AnInstrOrd {B : 𝒰}
   anc-suplat : (c : Instr) → is-sup-lattice (anc-poset c) 0ℓ
   anc-suplat c .is-sup-lattice.sup = anc-sup c
   anc-suplat c .is-sup-lattice.suprema = anc-lub c
+
+  -- TODO use state monad
+  un-β : Maybe (B × List B) → Ob × List B
+  un-β = recᵐ (P⊥ , []) (first β)
+
+  uncons-β : List B → Ob × List B
+  uncons-β = un-β ∘ unconsᵐ
+
+  anc-β-aux : (c : Instr) → List B → AnStr Ob c × List B
+  anc-β-aux  Skip         zs =
+    let (p , zs₀) = uncons-β zs in
+    (AnSkip p , refl) , zs₀
+  anc-β-aux (Assign x e) zs =
+    let (p , zs₀) = uncons-β zs in
+    (AnAssign x e p , refl) , zs₀
+  anc-β-aux (Seq c₁ c₂)   zs =
+    let ((a₁ , e₁) , zs₀) = anc-β-aux c₁ zs
+        ((a₂ , e₂) , zs₁) = anc-β-aux c₂ zs₀
+     in
+    (AnSeq a₁ a₂ , ap² Seq e₁ e₂) , zs₁
+  anc-β-aux (ITE b c₁ c₂) zs =
+    let (p₀        , zs₀) = uncons-β zs
+        ((a₁ , e₁) , zs₁) = anc-β-aux c₁ zs₀
+        (p₁        , zs₂) = uncons-β zs₁
+        ((a₂ , e₂) , zs₃) = anc-β-aux c₂ zs₂
+        (p₂        , zs₄) = uncons-β zs₃
+      in
+    (AnITE b p₀ a₁ p₁ a₂ p₂ , ap² (ITE b) e₁ e₂) , zs₄
+  anc-β-aux (While b c)   zs =
+    let (p₀      , zs₀) = uncons-β zs
+        (p₁      , zs₁) = uncons-β zs₀
+        ((a , e) , zs₂) = anc-β-aux c zs₁
+        (p₂      , zs₃) = uncons-β zs₂
+      in
+    (AnWhile p₀ b p₁ a p₂ , ap (While b) e) , zs₃
+
+  anc-β : (c : Instr) → List B → AnStr Ob c
+  anc-β c zs = anc-β-aux c zs .fst
+
+  -- TODO move to AnCom
+  ann-count : Instr → ℕ
+  ann-count  Skip         = 1
+  ann-count (Assign x e)  = 1
+  ann-count (Seq c₁ c₂)   = ann-count c₁ + ann-count c₂
+  ann-count (ITE b c₁ c₂) = 3 + ann-count c₁ + ann-count c₂
+  ann-count (While b c)   = 3 + ann-count c
