@@ -4,7 +4,10 @@ open import Prelude
 open import Data.Empty
 open import Data.Bool renaming (_==_ to _==ᵇ_ ; ==-reflects to ==ᵇ-reflects)
 open import Data.Nat renaming (_==_ to _==ⁿ_ ; ==-reflects to ==ⁿ-reflects)
+open import Data.Nat.Order.Base renaming (_≤_ to _≤ⁿ_ ; _<_ to _<ⁿ_)
 open import Data.String
+open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
+open import Data.List
 open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects renaming (dmap to dmapʳ)
 
@@ -115,7 +118,7 @@ AnITE≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 -- annotation ops
 
 shift : (ℕ → A) → ℕ → ℕ → A
-shift f n p = f (p + n)
+shift f n k = f (k + n)
 
 annotate : (ℕ → A) → Instr → AnInstr A
 annotate f  Skip         = AnSkip (f 0)
@@ -126,6 +129,43 @@ annotate f (ITE b c₁ c₂) = AnITE b
                              (f (suc (isize c₁))) (annotate (shift f (2 + isize c₁)) c₂)
                              (f (2 + isize c₁ + isize c₂))
 annotate f (While b c)   = AnWhile (f 0) b (f 1) (annotate (shift f 2) c) (f (2 + isize c))
+
+annotate-ext : ∀ {c : Instr} {f g : ℕ → A}
+             → (∀ n → n <ⁿ isize c → f n ＝ g n)
+             → annotate f c ＝ annotate g c
+annotate-ext {c = Skip}                h = ap AnSkip (h 0 z<s)
+annotate-ext {c = Assign x e}          h = ap (AnAssign x e) (h 0 z<s)
+annotate-ext {c = Seq c₁ c₂}           h = ap² AnSeq (annotate-ext λ n lt → h n (<-≤-trans lt ≤-+-r))
+                                                     (annotate-ext λ n lt → h (n + isize c₁)
+                                                                              (≤-<-trans (=→≤ (+-comm n (isize c₁))) (<≃<+l $ lt)))
+annotate-ext {c = ITE b c₁ c₂} {f} {g} h =    ap² (λ x y → AnITE b x y (f (suc (isize c₁)))
+                                                                       (annotate (shift f (2 + isize c₁)) c₂)
+                                                                       (f (2 + isize c₁ + isize c₂)))
+                                                  (h 0 z<s)
+                                                  (annotate-ext λ n lt → h (n + 1) (≤-<-trans (=→≤ (+-comm n 1))
+                                                                                      (s<s (<-≤-trans lt
+                                                                                              (≤-trans ≤-+-r
+                                                                                                (=→≤ (  +-assoc (isize c₁) 2 (isize c₂)
+                                                                                                      ∙ ap (_+ isize c₂) (+-comm (isize c₁) 2))))))))
+                                            ∙ ap² (λ x y → AnITE b (g 0) (annotate (shift g 1) c₁) x y (f (2 + isize c₁ + isize c₂)))
+                                                  (h (suc (isize c₁)) (s<s (<-≤-trans (≤-<-trans (=→≤ (+-zero-r (isize c₁) ⁻¹))
+                                                                                                 (<≃<+l $ z<s))
+                                                                                       (  =→≤ (+-assoc (isize c₁) 2 (isize c₂)
+                                                                                        ∙ ap (_+ isize c₂) (+-comm (isize c₁) 2))))))
+                                                  (annotate-ext λ n lt → h (n + (2 + isize c₁)) (<-trans (<≃<+r $ lt)
+                                                                                                   (≤-<-trans (=→≤ (+-comm (isize c₂) (2 + isize c₁)))
+                                                                                                      <-ascend)))
+                                            ∙ ap (AnITE b (g 0) (annotate (shift g 1) c₁) (g (suc (isize c₁)))
+                                                                (annotate (shift g (2 + isize c₁)) c₂))
+                                                 (h (2 + isize c₁ + isize c₂) (s<s (s<s <-ascend)))
+annotate-ext {c = While b c}   {f} {g} h =   ap² (λ x y → AnWhile x b y (annotate (shift f 2) c) (f (2 + isize c)))
+                                                 (h 0 z<s)
+                                                 (h 1 (s<s z<s))
+                                           ∙ ap² (AnWhile (g 0) b (g 1))
+                                                 (annotate-ext λ n lt → h (n + 2) (<-trans (<≃<+r $ lt)
+                                                                                     (≤-<-trans (=→≤ (+-comm (isize c) 2))
+                                                                                                (s<s (s<s <-ascend)))))
+                                                 (h (2 + isize c) (s<s (s<s <-ascend)))
 
 annos : AnInstr A → List1 A
 annos (AnSkip p)              = [ p ]₁
@@ -143,6 +183,22 @@ strip (AnAssign x e _)      = Assign x e
 strip (AnSeq c₁ c₂)         = Seq (strip c₁) (strip c₂)
 strip (AnITE b _ c₁ _ c₂ _) = ITE b (strip c₁) (strip c₂)
 strip (AnWhile _ b _ c _)   = While b (strip c)
+
+strip-annotate : ∀ {f : ℕ → A} {c} → strip (annotate f c) ＝ c
+strip-annotate {c = Skip}        = refl
+strip-annotate {c = Assign x e}  = refl
+strip-annotate {c = Seq c₁ c₂}   = ap² Seq (strip-annotate {c = c₁}) (strip-annotate {c = c₂})
+strip-annotate {c = ITE b c₁ c₂} = ap² (ITE b) (strip-annotate {c = c₁}) (strip-annotate {c = c₂})
+strip-annotate {c = While b c}   = ap (While b) (strip-annotate {c = c})
+
+annos-annotate-const : ∀ {a : A} {c} → annos (annotate (λ _ → a) c) ＝ replicate₁ (isize c) a
+annos-annotate-const {c = Skip}        = refl
+annos-annotate-const {c = Assign x e}  = refl
+annos-annotate-const {c = Seq c₁ c₂}   =   ap² (_++₁_) (annos-annotate-const {c = c₁})
+                                                       (annos-annotate-const {c = c₂})
+                                         ∙ replicate₁-+ (isize-pos c₁) (isize-pos c₂) ⁻¹
+annos-annotate-const {c = ITE b c₁ c₂} = {!!}
+annos-annotate-const {c = While b c}   = {!!}
 
 length-annos-same : ∀ {c₁ c₂ : AnInstr A}
                   → is-true (strip c₁ ==ⁱ strip c₂)
@@ -325,4 +381,3 @@ opaque
 
 AnStr : 𝒰 ℓ → Instr → 𝒰 ℓ
 AnStr A c = fibre (strip {A = A}) c
-

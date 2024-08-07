@@ -5,7 +5,7 @@ open import Data.Empty
 open import Data.Unit
 open import Data.Bool
 open import Data.Nat
-open import Data.Nat.Order.Inductive
+open import Data.Nat.Order.Base
 open import Data.String
 open import Data.List
 open import Data.List.Operations.Properties
@@ -44,6 +44,11 @@ to-list (init ∶+ last) = snoc init last
 
 _∶+₁_ : List1 A → A → List1 A
 xs ∶+₁ x = to-list xs ∶+ x
+
+-- made total by replicating once at 0
+replicate₁ : ℕ → A → List1 A
+replicate₁  zero   a = [ a ]₁
+replicate₁ (suc n) a = replicate n a ∶+ a
 
 -- basic properties
 ∶+-inj : {A : 𝒰 ℓ} {ix iy : List A} {lx ly : A}
@@ -87,6 +92,13 @@ length₁-∷₁ = refl
 length₁-++ : {xs ys : List1 A}
            → length₁ (xs ++₁ ys) ＝ length₁ xs + length₁ ys
 length₁-++ {xs = ix ∶+ lx} {ys = iy ∶+ ly} = ap suc (++-length ix (lx ∷ iy))
+
+replicate₁-+ : {n m : ℕ} {z : A}
+             → 0 < n → 0 < m
+             → replicate₁ (n + m) z ＝ replicate₁ n z ++₁ replicate₁ m z
+replicate₁-+ {n = zero}                  ltn ltm = absurd (≮z ltn)
+replicate₁-+ {n = suc n} {m = zero}      ltn ltm = absurd (≮z ltm)
+replicate₁-+ {n = suc n} {m = suc m} {z} ltn ltm = ap (_∶+ z) (replicate-+ {m = suc m})
 
 -- propositional all2
 

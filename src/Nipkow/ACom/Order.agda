@@ -4,7 +4,11 @@ open import Prelude
 open import Data.Empty
 open import Data.Unit
 open import Data.Bool
-open import Data.Nat
+open import Data.Nat renaming (rec to recⁿ)
+open import Data.Nat.Order.Base
+  renaming ( _≤_ to _≤ⁿ_ ; _<_ to _<ⁿ_
+           ; ≤-refl to ≤ⁿ-refl ; ≤-trans to ≤ⁿ-trans ; ≤-antisym to ≤ⁿ-antisym)
+open import Data.Nat.Order.Inductive.Base using (_≤ᵇ_)
 open import Data.Nat.Order.Minmax
 open import Data.Sum
 open import Data.String
@@ -442,48 +446,24 @@ module AnInstrOrd {B : 𝒰}
   anc-suplat c .is-sup-lattice.sup = anc-sup c
   anc-suplat c .is-sup-lattice.suprema = anc-lub c
 
-  -- TODO use state monad
-  un-β : Maybe (B × List B) → Ob × List B
-  un-β = recᵐ (P⊥ , []) (first β)
+  un-β : (ℕ → Maybe B) → (ℕ → Ob)
+  un-β = recᵐ P⊥ β ∘_
 
-  uncons-β : List B → Ob × List B
-  uncons-β = un-β ∘ unconsᵐ
+  annotate-β : (c : Instr) → (ℕ → Maybe B) → AnInstr Ob
+  annotate-β c f = annotate (un-β f) c
 
-  anc-β-aux : (c : Instr) → List B → AnStr Ob c × List B
-  anc-β-aux  Skip         zs =
-    let (p , zs₀) = uncons-β zs in
-    (AnSkip p , refl) , zs₀
-  anc-β-aux (Assign x e) zs =
-    let (p , zs₀) = uncons-β zs in
-    (AnAssign x e p , refl) , zs₀
-  anc-β-aux (Seq c₁ c₂)   zs =
-    let ((a₁ , e₁) , zs₀) = anc-β-aux c₁ zs
-        ((a₂ , e₂) , zs₁) = anc-β-aux c₂ zs₀
-     in
-    (AnSeq a₁ a₂ , ap² Seq e₁ e₂) , zs₁
-  anc-β-aux (ITE b c₁ c₂) zs =
-    let (p₀        , zs₀) = uncons-β zs
-        ((a₁ , e₁) , zs₁) = anc-β-aux c₁ zs₀
-        (p₁        , zs₂) = uncons-β zs₁
-        ((a₂ , e₂) , zs₃) = anc-β-aux c₂ zs₂
-        (p₂        , zs₄) = uncons-β zs₃
-      in
-    (AnITE b p₀ a₁ p₁ a₂ p₂ , ap² (ITE b) e₁ e₂) , zs₄
-  anc-β-aux (While b c)   zs =
-    let (p₀      , zs₀) = uncons-β zs
-        (p₁      , zs₁) = uncons-β zs₀
-        ((a , e) , zs₂) = anc-β-aux c zs₁
-        (p₂      , zs₃) = uncons-β zs₂
-      in
-    (AnWhile p₀ b p₁ a p₂ , ap (While b) e) , zs₃
+  filt : (ℕ → Maybe B) → (ℕ → Bool) → ℕ → Maybe B
+  filt f p n = if p n then f n else nothing
 
-  anc-β : (c : Instr) → List B → AnStr Ob c
-  anc-β c zs = anc-β-aux c zs .fst
+  annotate-β-filt : ∀ {c : Instr} {f : ℕ → Maybe B} {p : ℕ → Bool}
+                  → (∀ n → n <ⁿ isize c → is-true (p n))
+                  → annotate-β c (filt f p) ＝ annotate-β c f
+  annotate-β-filt h = annotate-ext λ n lt → ap (recᵐ P⊥ β) (if-true (h n lt))
 
-  -- TODO move to AnCom
-  ann-count : Instr → ℕ
-  ann-count  Skip         = 1
-  ann-count (Assign x e)  = 1
-  ann-count (Seq c₁ c₂)   = ann-count c₁ + ann-count c₂
-  ann-count (ITE b c₁ c₂) = 3 + ann-count c₁ + ann-count c₂
-  ann-count (While b c)   = 3 + ann-count c
+  shift-filt : {f : ℕ → Maybe B} {p : ℕ → Bool} {n : ℕ}
+             → (∀ m → n ≤ⁿ m → is-true (not (p m)))
+             → shift (un-β (filt f p)) n ＝ λ _ → P⊥
+  shift-filt {n} h = fun-ext λ k → ap (recᵐ P⊥ β) (if-false (h (k + n) ≤-+-l))
+
+  anc-β : (c : Instr) → (ℕ → Maybe B) → AnStr Ob c
+  anc-β c f = annotate-β c f , strip-annotate
