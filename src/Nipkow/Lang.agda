@@ -371,16 +371,16 @@ instance
 instr-is-set : is-set Instr
 instr-is-set = is-discrete→is-set instr-is-discrete
 
-isize : Instr → ℕ
-isize  Skip         = 1
-isize (Assign _ _)  = 1
-isize (Seq c₁ c₂)   = isize c₁ + isize c₂
-isize (ITE _ c₁ c₂) = 3 + isize c₁ + isize c₂
-isize (While _ c)   = 3 + isize c
+asize : Instr → ℕ
+asize  Skip         = 1
+asize (Assign _ _)  = 1
+asize (Seq c₁ c₂)   = asize c₁ + asize c₂
+asize (ITE _ c₁ c₂) = 3 + asize c₁ + asize c₂
+asize (While _ c)   = 3 + asize c
 
-isize-pos : ∀ i → 0 < isize i
-isize-pos  Skip         = z<s
-isize-pos (Assign x e)  = z<s
-isize-pos (Seq i₁ i₂)   = <-+-r (isize-pos i₁)
-isize-pos (ITE b i₁ i₂) = z<s
-isize-pos (While b i)   = z<s
+asize-pos : ∀ i → 0 < asize i
+asize-pos  Skip         = z<s
+asize-pos (Assign x e)  = z<s
+asize-pos (Seq i₁ i₂)   = <-+-r (asize-pos i₁)
+asize-pos (ITE b i₁ i₂) = z<s
+asize-pos (While b i)   = z<s

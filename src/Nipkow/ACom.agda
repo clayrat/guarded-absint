@@ -117,55 +117,55 @@ AnITE≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 
 -- annotation ops
 
-shift : (ℕ → A) → ℕ → ℕ → A
-shift f n k = f (k + n)
+shl : (ℕ → A) → ℕ → ℕ → A
+shl f n k = f (k + n)
 
 annotate : (ℕ → A) → Instr → AnInstr A
 annotate f  Skip         = AnSkip (f 0)
 annotate f (Assign x e)  = AnAssign x e (f 0)
-annotate f (Seq c₁ c₂)   = AnSeq (annotate f c₁) (annotate (shift f (isize c₁)) c₂)
+annotate f (Seq c₁ c₂)   = AnSeq (annotate f c₁) (annotate (shl f (asize c₁)) c₂)
 annotate f (ITE b c₁ c₂) = AnITE b
-                             (f 0) (annotate (shift f 1) c₁)
-                             (f (suc (isize c₁))) (annotate (shift f (2 + isize c₁)) c₂)
-                             (f (2 + isize c₁ + isize c₂))
-annotate f (While b c)   = AnWhile (f 0) b (f 1) (annotate (shift f 2) c) (f (2 + isize c))
+                             (f 0) (annotate (shl f 1) c₁)
+                             (f (suc (asize c₁))) (annotate (shl f (2 + asize c₁)) c₂)
+                             (f (2 + asize c₁ + asize c₂))
+annotate f (While b c)   = AnWhile (f 0) b (f 1) (annotate (shl f 2) c) (f (2 + asize c))
 
 annotate-ext : ∀ {c : Instr} {f g : ℕ → A}
-             → (∀ n → n <ⁿ isize c → f n ＝ g n)
+             → (∀ n → n <ⁿ asize c → f n ＝ g n)
              → annotate f c ＝ annotate g c
 annotate-ext {c = Skip}                h = ap AnSkip (h 0 z<s)
 annotate-ext {c = Assign x e}          h = ap (AnAssign x e) (h 0 z<s)
 annotate-ext {c = Seq c₁ c₂}           h = ap² AnSeq (annotate-ext λ n lt → h n (<-≤-trans lt ≤-+-r))
-                                                     (annotate-ext λ n lt → h (n + isize c₁)
-                                                                              (≤-<-trans (=→≤ (+-comm n (isize c₁))) (<≃<+l $ lt)))
-annotate-ext {c = ITE b c₁ c₂} {f} {g} h =    ap² (λ x y → AnITE b x y (f (suc (isize c₁)))
-                                                                       (annotate (shift f (2 + isize c₁)) c₂)
-                                                                       (f (2 + isize c₁ + isize c₂)))
+                                                     (annotate-ext λ n lt → h (n + asize c₁)
+                                                                              (≤-<-trans (=→≤ (+-comm n (asize c₁))) (<≃<+l $ lt)))
+annotate-ext {c = ITE b c₁ c₂} {f} {g} h =    ap² (λ x y → AnITE b x y (f (suc (asize c₁)))
+                                                                       (annotate (shl f (2 + asize c₁)) c₂)
+                                                                       (f (2 + asize c₁ + asize c₂)))
                                                   (h 0 z<s)
                                                   (annotate-ext λ n lt → h (n + 1) (≤-<-trans (=→≤ (+-comm n 1))
                                                                                       (s<s (<-≤-trans lt
                                                                                               (≤-trans ≤-+-r
-                                                                                                (=→≤ (  +-assoc (isize c₁) 2 (isize c₂)
-                                                                                                      ∙ ap (_+ isize c₂) (+-comm (isize c₁) 2))))))))
-                                            ∙ ap² (λ x y → AnITE b (g 0) (annotate (shift g 1) c₁) x y (f (2 + isize c₁ + isize c₂)))
-                                                  (h (suc (isize c₁)) (s<s (<-≤-trans (≤-<-trans (=→≤ (+-zero-r (isize c₁) ⁻¹))
+                                                                                                (=→≤ (  +-assoc (asize c₁) 2 (asize c₂)
+                                                                                                      ∙ ap (_+ asize c₂) (+-comm (asize c₁) 2))))))))
+                                            ∙ ap² (λ x y → AnITE b (g 0) (annotate (shl g 1) c₁) x y (f (2 + asize c₁ + asize c₂)))
+                                                  (h (suc (asize c₁)) (s<s (<-≤-trans (≤-<-trans (=→≤ (+-zero-r (asize c₁) ⁻¹))
                                                                                                  (<≃<+l $ z<s))
-                                                                                       (  =→≤ (+-assoc (isize c₁) 2 (isize c₂)
-                                                                                        ∙ ap (_+ isize c₂) (+-comm (isize c₁) 2))))))
-                                                  (annotate-ext λ n lt → h (n + (2 + isize c₁)) (<-trans (<≃<+r $ lt)
-                                                                                                   (≤-<-trans (=→≤ (+-comm (isize c₂) (2 + isize c₁)))
+                                                                                       (  =→≤ (+-assoc (asize c₁) 2 (asize c₂)
+                                                                                        ∙ ap (_+ asize c₂) (+-comm (asize c₁) 2))))))
+                                                  (annotate-ext λ n lt → h (n + (2 + asize c₁)) (<-trans (<≃<+r $ lt)
+                                                                                                   (≤-<-trans (=→≤ (+-comm (asize c₂) (2 + asize c₁)))
                                                                                                       <-ascend)))
-                                            ∙ ap (AnITE b (g 0) (annotate (shift g 1) c₁) (g (suc (isize c₁)))
-                                                                (annotate (shift g (2 + isize c₁)) c₂))
-                                                 (h (2 + isize c₁ + isize c₂) (s<s (s<s <-ascend)))
-annotate-ext {c = While b c}   {f} {g} h =   ap² (λ x y → AnWhile x b y (annotate (shift f 2) c) (f (2 + isize c)))
+                                            ∙ ap (AnITE b (g 0) (annotate (shl g 1) c₁) (g (suc (asize c₁)))
+                                                                (annotate (shl g (2 + asize c₁)) c₂))
+                                                 (h (2 + asize c₁ + asize c₂) (s<s (s<s <-ascend)))
+annotate-ext {c = While b c}   {f} {g} h =   ap² (λ x y → AnWhile x b y (annotate (shl f 2) c) (f (2 + asize c)))
                                                  (h 0 z<s)
                                                  (h 1 (s<s z<s))
                                            ∙ ap² (AnWhile (g 0) b (g 1))
                                                  (annotate-ext λ n lt → h (n + 2) (<-trans (<≃<+r $ lt)
-                                                                                     (≤-<-trans (=→≤ (+-comm (isize c) 2))
+                                                                                     (≤-<-trans (=→≤ (+-comm (asize c) 2))
                                                                                                 (s<s (s<s <-ascend)))))
-                                                 (h (2 + isize c) (s<s (s<s <-ascend)))
+                                                 (h (2 + asize c) (s<s (s<s <-ascend)))
 
 annos : AnInstr A → List1 A
 annos (AnSkip p)              = [ p ]₁
@@ -191,14 +191,36 @@ strip-annotate {c = Seq c₁ c₂}   = ap² Seq (strip-annotate {c = c₁}) (str
 strip-annotate {c = ITE b c₁ c₂} = ap² (ITE b) (strip-annotate {c = c₁}) (strip-annotate {c = c₂})
 strip-annotate {c = While b c}   = ap (While b) (strip-annotate {c = c})
 
-annos-annotate-const : ∀ {a : A} {c} → annos (annotate (λ _ → a) c) ＝ replicate₁ (isize c) a
-annos-annotate-const {c = Skip}        = refl
-annos-annotate-const {c = Assign x e}  = refl
-annos-annotate-const {c = Seq c₁ c₂}   =   ap² (_++₁_) (annos-annotate-const {c = c₁})
-                                                       (annos-annotate-const {c = c₂})
-                                         ∙ replicate₁-+ (isize-pos c₁) (isize-pos c₂) ⁻¹
-annos-annotate-const {c = ITE b c₁ c₂} = {!!}
-annos-annotate-const {c = While b c}   = {!!}
+length₁-annos : ∀ {a : AnInstr A} → length₁ (annos a) ＝ asize (strip a)
+length₁-annos {a = AnSkip p}              = refl
+length₁-annos {a = AnAssign x e p}        = refl
+length₁-annos {a = AnSeq a₁ a₂}           =   length₁-++ {ys = annos a₂}
+                                            ∙ ap² _+_ (length₁-annos {a = a₁}) (length₁-annos {a = a₂})
+length₁-annos {a = AnITE b p₁ a₁ p₂ a₂ q} =   length₁-∶+₁ {x = q} {xs = (p₁ ∷₁ annos a₁) ++₁ (p₂ ∷₁ annos a₂)}
+                                            ∙ ap suc (  length₁-++ {xs = p₁ ∷₁ annos a₁} {ys = p₂ ∷₁ annos a₂}
+                                                      ∙ ap suc (ap² _+_ (  length₁-annos {a = a₁}) (ap suc (length₁-annos {a = a₂}))
+                                                                         ∙ +-suc-r (asize (strip a₁)) (asize (strip a₂))))
+length₁-annos {a = AnWhile inv₁ b p a q}  =   length₁-∶+₁ {x = q} {xs = inv₁ ∷₁ (p ∷₁ annos a)}
+                                            ∙ ap (3 +_) (length₁-annos {a = a})
+
+annos-annotate-const : ∀ {a : A} {c} → annos (annotate (λ _ → a) c) ＝ replicate₁ (asize c) a
+annos-annotate-const     {c = Skip}        = refl
+annos-annotate-const     {c = Assign x e}  = refl
+annos-annotate-const     {c = Seq c₁ c₂}   =   ap² (_++₁_) (annos-annotate-const {c = c₁})
+                                                           (annos-annotate-const {c = c₂})
+                                             ∙ replicate₁-+ (asize-pos c₁) (asize-pos c₂) ⁻¹
+annos-annotate-const {a} {c = ITE b c₁ c₂} =   ap (_∶+₁ a) (  ap² (_++₁_) (  ap (a ∷₁_) (annos-annotate-const {c = c₁})
+                                                                          ∙ replicate₁-∷₁ (asize-pos c₁) ⁻¹)
+                                                                         (  ap (a ∷₁_) (annos-annotate-const {c = c₂})
+                                                                          ∙ replicate₁-∷₁ (asize-pos c₂) ⁻¹)
+                                                           ∙ replicate₁-+ z<s z<s ⁻¹
+                                                           ∙ ap (λ q → replicate₁ (suc q) a) (+-suc-r (asize c₁) (asize c₂)))
+                                             ∙ replicate₁-∶+₁ z<s ⁻¹
+annos-annotate-const {a} {c = While b c}   = ap (_∶+₁ a)
+                                             (  ap (λ q → a ∷₁ (a ∷₁ q)) (annos-annotate-const {c = c})
+                                              ∙ ap (a ∷₁_) (replicate₁-∷₁ (asize-pos c) ⁻¹)
+                                              ∙ replicate₁-∷₁ z<s ⁻¹)
+                                             ∙ replicate₁-∶+₁ z<s ⁻¹
 
 length-annos-same : ∀ {c₁ c₂ : AnInstr A}
                   → is-true (strip c₁ ==ⁱ strip c₂)

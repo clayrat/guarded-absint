@@ -89,6 +89,9 @@ length-to-list {xs = ix ∶+ lx} = snoc-length ix
 length₁-∷₁ : {x : A} {xs : List1 A} → length₁ (x ∷₁ xs) ＝ suc (length₁ xs)
 length₁-∷₁ = refl
 
+length₁-∶+₁ : {x : A} {xs : List1 A} → length₁ (xs ∶+₁ x) ＝ suc (length₁ xs)
+length₁-∶+₁ {xs = ix ∶+ lx} = ap suc (snoc-length ix)
+
 length₁-++ : {xs ys : List1 A}
            → length₁ (xs ++₁ ys) ＝ length₁ xs + length₁ ys
 length₁-++ {xs = ix ∶+ lx} {ys = iy ∶+ ly} = ap suc (++-length ix (lx ∷ iy))
@@ -99,6 +102,18 @@ replicate₁-+ : {n m : ℕ} {z : A}
 replicate₁-+ {n = zero}                  ltn ltm = absurd (≮z ltn)
 replicate₁-+ {n = suc n} {m = zero}      ltn ltm = absurd (≮z ltm)
 replicate₁-+ {n = suc n} {m = suc m} {z} ltn ltm = ap (_∶+ z) (replicate-+ {m = suc m})
+
+replicate₁-∷₁ : {n : ℕ} {z : A}
+              → 0 < n
+              → replicate₁ (suc n) z ＝ z ∷₁ replicate₁ n z
+replicate₁-∷₁ {n = zero}      ltn = absurd (≮z ltn)
+replicate₁-∷₁ {n = suc n} {z} ltn = refl
+
+replicate₁-∶+₁ : {n : ℕ} {z : A}
+              → 0 < n
+              → replicate₁ (suc n) z ＝ replicate₁ n z ∶+₁ z
+replicate₁-∶+₁ {n = zero}      ltn = absurd (≮z ltn)
+replicate₁-∶+₁ {n = suc n} {z} ltn = ap (_∶+ z) replicate-snoc
 
 -- propositional all2
 
@@ -178,6 +193,12 @@ All2₁-∶+₁-r {R} {x} {y} {xs} {ys} rs r =
   subst (λ q → All2₁ R q (ys ++₁ [ y ]₁)) (∶+₁-++₁ ⁻¹) $
   All2₁-++₁ rs ([] , r)
 
+All2₁-replicate-l : {R : A → A → 𝒰 ℓ} {x : A} {ys : List1 A}
+                  → (∀ y → R x y)
+                  → All2₁ R (replicate₁ (length₁ ys) x) ys
+All2₁-replicate-l {ys = iy ∶+ ly} h = all2-replicate-l h , h ly
+
+{-
 -- boolean all2
 
 all2?₁ : (A → A → Bool) → List1 A → List1 A → Bool
@@ -208,4 +229,4 @@ all2?-∶+₁ : {r : A → A → Bool} {x y : A}
          → length₁ xs ＝ length₁ ys
          → all2?₁ r (xs ∶+₁ x) (ys ∶+₁ y) ＝ all2?₁ r xs ys and r x y
 all2?-∶+₁ {r} {x} {y} {xs} {ys} e = ap² (all2?₁ r) (∶+₁-++₁ {xs = xs}) (∶+₁-++₁ {xs = ys}) ∙ all2?-++₁ e
-
+-}
