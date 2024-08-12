@@ -8,7 +8,7 @@ open import Data.Nat renaming (rec to recⁿ)
 open import Data.Nat.Order.Base
   renaming ( _≤_ to _≤ⁿ_ ; _<_ to _<ⁿ_
            ; ≤-refl to ≤ⁿ-refl ; ≤-trans to ≤ⁿ-trans ; ≤-antisym to ≤ⁿ-antisym)
-open import Data.Nat.Order.Inductive.Base using (_≤ᵇ_)
+open import Data.Nat.Order.Inductive.Base using (_≤?_)
 open import Data.Nat.Order.Minmax
 open import Data.Sum
 open import Data.String
@@ -429,7 +429,7 @@ module AnInstrOrd {B : 𝒰}
   unᵐ-β = recᵐ bot β
 
   shr : (ℕ → Maybe B) → ℕ → ℕ → Maybe B
-  shr f n k = if n ≤ᵇ k then f (k ∸ n) else nothing
+  shr f n k = if n ≤? k then f (k ∸ n) else nothing
 
   annotate-β : (c : Instr) → (ℕ → Maybe B) → AnInstr Ob
   annotate-β c f = annotate (unᵐ-β ∘ f) c
@@ -530,12 +530,12 @@ module AnInstrOrd {B : 𝒰}
                                                seq-≤ⁱ-introl eq₀'
                                                  (ih₁ .is-basis.↓-is-sup (a₁ , e₁) .least (a₁' , e₁')
                                                     λ where (bf , le) →
-                                                               let qq = f ( filt bf (_<ᵇ asize c₁)
+                                                               let qq = f ( filt bf (_<? asize c₁)
                                                                           , seq-≤ⁱ-introl eq₀
                                                                               (subst (_≤ⁱ a₁) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt) ⁻¹) le)
                                                                               ( strip-annotate ∙ e₂ ⁻¹
                                                                               , subst (λ q → All2₁ _≤_ (annos (annotate q c₂)) (annos a₂))
-                                                                                      (shl-filt-not {f = bf} {p = _<ᵇ asize c₁} {n = asize c₁}
+                                                                                      (shl-filt-not {f = bf} {p = _<? asize c₁} {n = asize c₁}
                                                                                                     (λ m le → reflects-false (<-reflects m (asize c₁)) (≤≃≯ $ le)) ⁻¹)
                                                                                       (subst (λ q → All2₁ _≤_ q (annos a₂))
                                                                                              (annos-annotate-const ⁻¹)
@@ -545,8 +545,8 @@ module AnInstrOrd {B : 𝒰}
                                                                  in
                                                                 subst (_≤ⁱ a₁') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)) $
                                                                 (seq-≤ⁱ-elim $
-                                                                 subst (AnSeq (anc-β c₁ (filt bf (_<ᵇ asize c₁)) .fst)
-                                                                              (anc-β c₂ (shl (filt bf (_<ᵇ asize c₁)) (asize c₁)) .fst) ≤ⁱ_)
+                                                                 subst (AnSeq (anc-β c₁ (filt bf (_<? asize c₁)) .fst)
+                                                                              (anc-β c₂ (shl (filt bf (_<? asize c₁)) (asize c₁)) .fst) ≤ⁱ_)
                                                                         eq₀' qq)
                                                                 .fst)
                                                  (ih₂ .is-basis.↓-is-sup (a₂ , e₂) .least (a₂' , e₂')
@@ -556,7 +556,7 @@ module AnInstrOrd {B : 𝒰}
                                                                               ( strip-annotate ∙ e₁ ⁻¹
                                                                               , (subst (λ q → All2₁ _≤_ (annos q) (annos a₁))
                                                                                        (annotate-ext {c = c₁} {f = λ _ → bot} {g = unᵐ-β ∘ shr bf (asize c₁)}
-                                                                                                     λ n lt → ap unᵐ-β (if-false {b = asize c₁ ≤ᵇ n} (reflects-false (≤-reflects (asize c₁) n) (<≃≱ $ lt))) ⁻¹)
+                                                                                                     λ n lt → ap unᵐ-β (if-false {b = asize c₁ ≤? n} (reflects-false (≤-reflects (asize c₁) n) (<≃≱ $ lt))) ⁻¹)
                                                                                        (subst (λ q → All2₁ _≤_ q (annos a₁))
                                                                                               (annos-annotate-const ⁻¹)
                                                                                               (subst (λ q → All2₁ _≤_ (replicate₁ q bot) (annos a₁))
