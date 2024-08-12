@@ -15,7 +15,7 @@ open import Data.String
 open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
 open import Data.List
 open import Data.List.Operations.Properties
-open import Data.List.Correspondences.Binary.All2
+open import Data.List.Correspondences.Binary.All
 open import Data.Reflects
 
 open import Order.Base
@@ -35,7 +35,7 @@ module AnInstrLeq
   open List1.List1
 
   _≤ⁱ_ : AnInstr A → AnInstr A → 𝒰 (ℓsuc 0ℓ)
-  c₁ ≤ⁱ c₂ = (strip c₁ ＝ strip c₂) × All2₁ leq (annos c₁) (annos c₂)
+  c₁ ≤ⁱ c₂ = (strip c₁ ＝ strip c₂) × All²₁ leq (annos c₁) (annos c₂)
 
   opaque
     skip-≤ⁱ-intro : ∀ {s s'}
@@ -97,7 +97,7 @@ module AnInstrLeq
     seq-≤ⁱ-intro : ∀ {c₁ c₂ c₃ c₄}
                  → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
                  → AnSeq c₁ c₂ ≤ⁱ AnSeq c₃ c₄
-    seq-≤ⁱ-intro (e₁ , le₁) (e₂ , le₂) = ap² Seq e₁ e₂ , All2₁-++₁ le₁ le₂
+    seq-≤ⁱ-intro (e₁ , le₁) (e₂ , le₂) = ap² Seq e₁ e₂ , All²₁-++₁ le₁ le₂
 
     seq-≤ⁱ-introl : ∀ {c₁ c₂ c c₃ c₄}
                   → c ＝ AnSeq c₃ c₄ → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
@@ -117,10 +117,10 @@ module AnInstrLeq
                  (c ＝ AnSeq c₃ c₄) × c₁ ≤ⁱ c₃ × c₂ ≤ⁱ c₄
     seq-≤ⁱ-eliml {c₁} {c₂} {c} (h1 , h2) =
       let (a₁ , a₂ , eq₁ , eq₂ , eq₃) = strip-seq-r (h1 ⁻¹)
-          (le1 , le2) = All2₁-split
+          (le1 , le2) = All²₁-split
                           (length-annos-same {c₁ = c₁}
                              (reflects-true (reflects-instr (strip c₁) (strip a₁)) (eq₂ ⁻¹)))
-                          (subst (All2₁ leq (annos c₁ ++₁ annos c₂) ∘ annos) eq₁ h2)
+                          (subst (All²₁ leq (annos c₁ ++₁ annos c₂) ∘ annos) eq₁ h2)
          in
         a₁ , a₂ , eq₁ , (eq₂ ⁻¹ , le1) , eq₃ ⁻¹ , le2
 
@@ -138,7 +138,7 @@ module AnInstrLeq
                  → AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ AnITE b p₃ c₃ p₄ c₄ q₂
     ite-≤ⁱ-intro {b} le₁ (e₂ , le₂) le₃ (e₄ , le₄) le₅ =
       ( ap² (ITE b) e₂ e₄
-      , All2₁-∶+₁-r (All2₁-++₁ (All2-∶∶₁-r le₁ le₂) (All2-∶∶₁-r le₃ le₄)) le₅)
+      , All²₁-∶+₁-r (All²₁-++₁ (All²-∶∶₁-r le₁ le₂) (All²-∶∶₁-r le₃ le₄)) le₅)
 
     ite-≤ⁱ-introl : ∀ {b p₁ c₁ p₂ c₂ q₁ c p₃ c₃ p₄ c₄ q₂}
                   → c ＝ AnITE b p₃ c₃ p₄ c₄ q₂
@@ -161,18 +161,18 @@ module AnInstrLeq
                                 × leq p₁ p₃ × c₁ ≤ⁱ c₃ × leq p₂ p₄ × c₂ ≤ⁱ c₄ × leq q₁ q₂
     ite-≤ⁱ-eliml {b} {p₁} {c₁} {p₂} {c₂} {q₁} {c} (h1 , h2) =
       let (p₃ , a₁ , p₄ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r (h1 ⁻¹)
-          le = All2₁-∶+₁-l (  length₁-++ {xs = p₁ ∷₁ annos c₁} {ys = p₂ ∷₁ annos c₂}
+          le = All²₁-∶+₁-l (  length₁-++ {xs = p₁ ∷₁ annos c₁} {ys = p₂ ∷₁ annos c₂}
                             ∙ ap² (λ x y → suc x + suc y)
                                   (length-annos-same {c₁ = c₁}
                                      (reflects-true (reflects-instr (strip c₁) (strip a₁)) (eq₁ ⁻¹)))
                                   (length-annos-same {c₁ = c₂}
                                      (reflects-true (reflects-instr (strip c₂) (strip a₂)) (eq₂ ⁻¹)))
                             ∙ length₁-++ {xs = p₃ ∷₁ annos a₁} {ys = p₄ ∷₁ annos a₂} ⁻¹) $
-                 subst (All2₁ leq (((p₁ ∷₁ annos c₁) ++₁ (p₂ ∷₁ annos c₂)) ∶+₁ q₁) ∘ annos) eq h2
-          (le₁₁ , le₁₂) = All2₁-split (ap suc (length-annos-same {c₁ = c₁} (reflects-true (reflects-instr (strip c₁) (strip a₁)) (eq₁ ⁻¹))))
+                 subst (All²₁ leq (((p₁ ∷₁ annos c₁) ++₁ (p₂ ∷₁ annos c₂)) ∶+₁ q₁) ∘ annos) eq h2
+          (le₁₁ , le₁₂) = All²₁-split (ap suc (length-annos-same {c₁ = c₁} (reflects-true (reflects-instr (strip c₁) (strip a₁)) (eq₁ ⁻¹))))
                                       (le .fst)
-          (le₂₁ , le₂₂) = All2-∶∶₁-l le₁₁
-          (le₃₁ , le₃₂) = All2-∶∶₁-l le₁₂
+          (le₂₁ , le₂₂) = All²-∶∶₁-l le₁₁
+          (le₃₁ , le₃₂) = All²-∶∶₁-l le₁₂
         in
       p₃ , a₁ , p₄ , a₂ , q , eq , le₂₁ , (eq₁ ⁻¹ , le₂₂) , le₃₁ , (eq₂ ⁻¹ , le₃₂) , le .snd
 
@@ -195,7 +195,7 @@ module AnInstrLeq
                     → AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ AnWhile inv₂ b p₂ c₂ q₂
     while-≤ⁱ-intro {b} le₁ le₂ (e₃ , le₃) le₄ =
       ( ap (While b) e₃
-      , All2₁-∶+₁-r (All2-∶∶₁-r le₁ (All2-∶∶₁-r le₂ le₃)) le₄)
+      , All²₁-∶+₁-r (All²-∶∶₁-r le₁ (All²-∶∶₁-r le₂ le₃)) le₄)
 
     while-≤ⁱ-introl : ∀ {inv₁ b p₁ c₁ q₁ c inv₂ p₂ c₂ q₂}
                     → c ＝ AnWhile inv₂ b p₂ c₂ q₂
@@ -220,12 +220,12 @@ module AnInstrLeq
                        × leq inv₁ inv₂ × leq p₁ p₂ × c₁ ≤ⁱ c₂ × leq q₁ q₂
     while-≤ⁱ-eliml {inv₁} {b} {p₁} {c₁} {q₁} {c} (h1 , h2) =
       let (inv₂ , p , a , q , eq , eq₁) = strip-while-r (h1 ⁻¹)
-          le = All2₁-∶+₁-l (ap (2 +_)
+          le = All²₁-∶+₁-l (ap (2 +_)
                               (length-annos-same {c₁ = c₁}
                                 (reflects-true (reflects-instr (strip c₁) (strip a)) (eq₁ ⁻¹)))) $
-               subst (All2₁ leq (((inv₁ ∷₁ (p₁ ∷₁ annos c₁)) ∶+₁ q₁)) ∘ annos) eq h2
-          (le₁₁ , le₁₂) = All2-∶∶₁-l (le .fst)
-          (le₂₁ , le₂₂) = All2-∶∶₁-l le₁₂
+               subst (All²₁ leq (((inv₁ ∷₁ (p₁ ∷₁ annos c₁)) ∶+₁ q₁)) ∘ annos) eq h2
+          (le₁₁ , le₁₂) = All²-∶∶₁-l (le .fst)
+          (le₂₁ , le₂₂) = All²-∶∶₁-l le₁₂
        in
       inv₂ , p , a , q , eq , le₁₁ , le₂₁ , (eq₁ ⁻¹ , le₂₂) , le .snd
 
@@ -261,24 +261,24 @@ module AnInstrOrd {B : 𝒰}
   an-poset .Poset.Ob                                = AnInstr Ob
   an-poset .Poset._≤_                               = _≤ⁱ_
   an-poset .Poset.≤-thin                            = ×-is-of-hlevel 1 (instr-is-set (strip _) (strip _))
-                                                                       (All2₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
-  an-poset .Poset.≤-refl                            = refl , all2₁-refl (λ _ → ≤-refl)
-  an-poset .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all2₁-trans (λ _ _ _ → ≤-trans) axy ayz
+                                                                       (All²₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
+  an-poset .Poset.≤-refl                            = refl , all²₁-refl (λ _ → ≤-refl)
+  an-poset .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all²₁-trans (λ _ _ _ → ≤-trans) axy ayz
   an-poset .Poset.≤-antisym (exy , axy) (eyx , ayx) =
     strip-annos-same (reflects-true (reflects-instr (strip _) (strip _)) exy)
-                     (all2₁-antisym (λ _ _ → ≤-antisym) axy ayx)
+                     (all²₁-antisym (λ _ _ → ≤-antisym) axy ayx)
 
   anc-poset : Instr → Poset (ℓsuc 0ℓ) (ℓsuc 0ℓ)
   anc-poset c .Poset.Ob = AnStr Ob c
   anc-poset c .Poset._≤_ (a1 , e1) (a2 , e2) = a1 ≤ⁱ a2  -- TODO try just all2 leq, because strip equality is assumed
   anc-poset c .Poset.≤-thin = ×-is-of-hlevel 1 (instr-is-set (strip _) (strip _))
-                                               (All2₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
-  anc-poset c .Poset.≤-refl = refl , all2₁-refl (λ _ → ≤-refl)
-  anc-poset c .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all2₁-trans (λ _ _ _ → ≤-trans) axy ayz
+                                               (All²₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
+  anc-poset c .Poset.≤-refl = refl , all²₁-refl (λ _ → ≤-refl)
+  anc-poset c .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all²₁-trans (λ _ _ _ → ≤-trans) axy ayz
   anc-poset c .Poset.≤-antisym {x = ax , ex} {y = ay , ey} (exy , axy) (eyx , ayx) =
     Σ-prop-path (λ a → instr-is-set (strip a) c) $
     strip-annos-same (reflects-true (reflects-instr (strip _) (strip _)) exy)
-                     (all2₁-antisym (λ _ _ → ≤-antisym) axy ayx)
+                     (all²₁-antisym (λ _ _ → ≤-antisym) axy ayx)
 
   anc-sup : ∀ (c : Instr) → {I : 𝒰} → (I → AnStr Ob c) → AnStr Ob c
   anc-sup  Skip         {I} F =
@@ -534,14 +534,14 @@ module AnInstrOrd {B : 𝒰}
                                                                           , seq-≤ⁱ-introl eq₀
                                                                               (subst (_≤ⁱ a₁) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt) ⁻¹) le)
                                                                               ( strip-annotate ∙ e₂ ⁻¹
-                                                                              , subst (λ q → All2₁ _≤_ (annos (annotate q c₂)) (annos a₂))
+                                                                              , subst (λ q → All²₁ _≤_ (annos (annotate q c₂)) (annos a₂))
                                                                                       (shl-filt-not {f = bf} {p = _<? asize c₁} {n = asize c₁}
                                                                                                     (λ m le → reflects-false (<-reflects m (asize c₁)) (≤≃≯ $ le)) ⁻¹)
-                                                                                      (subst (λ q → All2₁ _≤_ q (annos a₂))
+                                                                                      (subst (λ q → All²₁ _≤_ q (annos a₂))
                                                                                              (annos-annotate-const ⁻¹)
-                                                                                             (subst (λ q → All2₁ _≤_ (replicate₁ q bot) (annos a₂))
+                                                                                             (subst (λ q → All²₁ _≤_ (replicate₁ q bot) (annos a₂))
                                                                                                     (length₁-annos {a = a₂} ∙ ap asize e₂)
-                                                                                                    (All2₁-replicate-l has-bot)))))
+                                                                                                    (All²₁-replicate-l has-bot)))))
                                                                  in
                                                                 subst (_≤ⁱ a₁') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)) $
                                                                 (seq-≤ⁱ-elim $
@@ -554,14 +554,14 @@ module AnInstrOrd {B : 𝒰}
                                                                let qq = f ( shr bf (asize c₁)
                                                                           , seq-≤ⁱ-introl eq₀
                                                                               ( strip-annotate ∙ e₁ ⁻¹
-                                                                              , (subst (λ q → All2₁ _≤_ (annos q) (annos a₁))
+                                                                              , (subst (λ q → All²₁ _≤_ (annos q) (annos a₁))
                                                                                        (annotate-ext {c = c₁} {f = λ _ → bot} {g = unᵐ-β ∘ shr bf (asize c₁)}
                                                                                                      λ n lt → ap unᵐ-β (if-false {b = asize c₁ ≤? n} (reflects-false (≤-reflects (asize c₁) n) (<≃≱ $ lt))) ⁻¹)
-                                                                                       (subst (λ q → All2₁ _≤_ q (annos a₁))
+                                                                                       (subst (λ q → All²₁ _≤_ q (annos a₁))
                                                                                               (annos-annotate-const ⁻¹)
-                                                                                              (subst (λ q → All2₁ _≤_ (replicate₁ q bot) (annos a₁))
+                                                                                              (subst (λ q → All²₁ _≤_ (replicate₁ q bot) (annos a₁))
                                                                                                     (length₁-annos {a = a₁} ∙ ap asize e₁)
-                                                                                                    (All2₁-replicate-l has-bot)))))
+                                                                                                    (All²₁-replicate-l has-bot)))))
                                                                               (subst (λ q → annotate q c₂ ≤ⁱ a₂) (shl-shr {f = bf} {n = asize c₁} ⁻¹) le)
                                                                           )
                                                                  in
