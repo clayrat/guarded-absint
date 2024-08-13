@@ -18,10 +18,12 @@ open import Data.List.Operations.Properties
 open import Data.List.Correspondences.Binary.All
 open import Data.Reflects
 
+open import Combinatorics.Power
 open import Order.Base
 open import Order.Diagram.Lub
 open import Order.SupLattice
 open import Order.SupLattice.SmallBasis
+open import Order.SupLattice.SmallPresentation
 
 open import List1
 open import Nipkow.Lang
@@ -249,6 +251,7 @@ module AnInstrOrd {B : 𝒰}
   (L : is-sup-lattice P 0ℓ)
   (β : B → ⌞ P ⌟)
   (h : is-basis P L β)
+  (sp : has-small-presentation P L β h)
   where
 
   open Poset P
@@ -260,7 +263,7 @@ module AnInstrOrd {B : 𝒰}
   an-poset : Poset (ℓsuc 0ℓ) (ℓsuc 0ℓ)
   an-poset .Poset.Ob                                = AnInstr Ob
   an-poset .Poset._≤_                               = _≤ⁱ_
-  an-poset .Poset.≤-thin                            = ×-is-of-hlevel 1 (instr-is-set (strip _) (strip _))
+  an-poset .Poset.≤-thin                            = ×-is-of-hlevel 1 (hlevel 1)
                                                                        (All²₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
   an-poset .Poset.≤-refl                            = refl , all²₁-refl (λ _ → ≤-refl)
   an-poset .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all²₁-trans (λ _ _ _ → ≤-trans) axy ayz
@@ -271,7 +274,7 @@ module AnInstrOrd {B : 𝒰}
   anc-poset : Instr → Poset (ℓsuc 0ℓ) (ℓsuc 0ℓ)
   anc-poset c .Poset.Ob = AnStr Ob c
   anc-poset c .Poset._≤_ (a1 , e1) (a2 , e2) = a1 ≤ⁱ a2  -- TODO try just all2 leq, because strip equality is assumed
-  anc-poset c .Poset.≤-thin = ×-is-of-hlevel 1 (instr-is-set (strip _) (strip _))
+  anc-poset c .Poset.≤-thin = ×-is-of-hlevel 1 (hlevel 1)
                                                (All²₁-is-of-hlevel 0 (λ _ _ → ≤-thin))
   anc-poset c .Poset.≤-refl = refl , all²₁-refl (λ _ → ≤-refl)
   anc-poset c .Poset.≤-trans (exy , axy) (eyz , ayz)   = exy ∙ eyz , all²₁-trans (λ _ _ _ → ≤-trans) axy ayz
@@ -442,7 +445,8 @@ module AnInstrOrd {B : 𝒰}
   shr : (ℕ → Maybe B) → ℕ → ℕ → Maybe B
   shr f n k = if n ≤? k then f (k ∸ n) else nothing
 
-  single-at : B → ℕ → ℕ → Maybe B
+  single-at : ∀ {ℓᵇ} {B : 𝒰 ℓᵇ}
+            → B → ℕ → ℕ → Maybe B
   single-at b n k = if n ==ⁿ k then just b else nothing
 
   filt : (ℕ → Maybe B) → (ℕ → Bool) → ℕ → Maybe B
@@ -789,4 +793,13 @@ module AnInstrOrd {B : 𝒰}
                                                                         le)))
                                                               .snd .snd .snd)
                            } }
+
+  J : 𝒰
+  J = sp .fst .fst
+  Y : J → ℙ B 0ℓ
+  Y = sp .fst .snd .fst
+  R : ℙ (B × ℙ B 0ℓ) 0ℓ
+  R = sp .fst .snd .snd
+  isp : is-a-small-presentation P L β h (J , Y , R)
+  isp = sp .snd
 

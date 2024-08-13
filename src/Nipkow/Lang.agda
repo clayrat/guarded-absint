@@ -371,6 +371,11 @@ instance
 instr-is-set : is-set Instr
 instr-is-set = is-discrete→is-set instr-is-discrete
 
+instance
+  H-Level-Instr : ∀ {n} → ⦃ n ≥ʰ 2 ⦄ → H-Level n Instr
+  H-Level-Instr ⦃ s≤ʰs (s≤ʰs _) ⦄ = hlevel-basic-instance 2 instr-is-set
+  {-# OVERLAPPING H-Level-Instr #-}
+
 asize : Instr → ℕ
 asize  Skip         = 1
 asize (Assign _ _)  = 1

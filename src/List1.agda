@@ -127,6 +127,14 @@ All²₁-is-of-hlevel
 All²₁-is-of-hlevel n {ix ∶+ lx} {iy ∶+ ly} hl =
   ×-is-of-hlevel (suc n) (all²-is-of-hlevel n hl) (hl lx ly)
 
+instance opaque
+  H-Level-All²₁ : ∀ {n} {xs ys : List1 A} {R : A → A → 𝒰 ℓ′}
+                → ⦃ n ≥ʰ 1 ⦄
+                → ⦃ A-hl : ∀ {x y}
+                → H-Level n (R x y) ⦄ → H-Level n (All²₁ R xs ys)
+  H-Level-All²₁ {n} ⦃ s≤ʰs _ ⦄ .H-Level.has-of-hlevel = All²₁-is-of-hlevel _ (λ x y → hlevel n)
+  {-# OVERLAPPING H-Level-All²₁ #-}
+
 -- monotype versions
 all²₁-refl : {as : List1 A} {P : A → A → 𝒰 ℓ′}
            → (∀ a → P a a)
