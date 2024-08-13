@@ -723,14 +723,70 @@ module AnInstrOrd {B : 𝒰}
                                                while-≤ⁱ-introl eq₀'
                                                  (↓-is-sup inv₀ .least inv₀'
                                                     λ where (b' , le) →
-                                                              {!!})
+                                                               let bf₁ = single-at b' 0 in
+                                                               (while-≤ⁱ-elim $
+                                                                subst (annotate-β (While b c) bf₁ ≤ⁱ_) eq₀' $
+                                                                f ( bf₁
+                                                                  , while-≤ⁱ-introl eq₀ le
+                                                                       (has-bot p₀)
+                                                                       (subst (λ q → annotate q c ≤ⁱ a₀)
+                                                                              (shl-single-at-not {n = 0} {m = 2} z<s ⁻¹)
+                                                                              (annotate-bot e₀))
+                                                                       (has-bot q₀)))
+                                                                .fst)
                                                  (↓-is-sup p₀ .least p₀'
                                                     λ where (b' , le) →
-                                                              {!!})
+                                                              let bf₂ = single-at b' 1 in
+                                                              (while-≤ⁱ-elim $
+                                                               subst (annotate-β (While b c) bf₂ ≤ⁱ_) eq₀' $
+                                                               f ( bf₂
+                                                                 , while-≤ⁱ-introl eq₀
+                                                                     (has-bot inv₀)
+                                                                     le
+                                                                     (subst (λ q → annotate q c ≤ⁱ a₀)
+                                                                              (shl-single-at-not {n = 1} {m = 2} (s<s z<s) ⁻¹)
+                                                                              (annotate-bot e₀))
+                                                                     (has-bot q₀)))
+                                                               .snd .fst)
                                                  (ih (a₀ , e₀) .least (a₀' , e₀')
                                                      λ where (bf , le) →
-                                                              {!!})
+                                                              let bf₃ = shr (filt bf (_<? asize c)) 2 in
+                                                               subst (_≤ⁱ a₀') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c)) lt)) $
+                                                               subst (λ q → annotate q c ≤ⁱ a₀')
+                                                                     (shl-shr {f = filt bf (_<? asize c)} {n = 2}) $
+                                                               while-≤ⁱ-elim
+                                                                 (subst (annotate-β (While b c) bf₃ ≤ⁱ_) eq₀' $
+                                                                  f ( bf₃
+                                                                    , while-≤ⁱ-introl eq₀
+                                                                        (has-bot inv₀)
+                                                                        (has-bot p₀)
+                                                                        (subst (λ q → annotate q c ≤ⁱ a₀)
+                                                                                (shl-shr {f = filt bf (_<? asize c)} {n = 2} ⁻¹) $
+                                                                         subst (_≤ⁱ a₀) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c)) lt) ⁻¹) le)
+                                                                        (subst (λ z → unᵐ-β z ≤ q₀)
+                                                                               (if-false (reflects-false (<-reflects (asize c) (asize c)) <-irr) ⁻¹)
+                                                                               (has-bot q₀))
+                                                                    ))
+                                                                 .snd .snd .fst)
                                                  (↓-is-sup q₀ .least q₀'
                                                     λ where (b' , le) →
-                                                              {!!})
+                                                              let bf₄ = single-at b' (2 + asize c) in
+                                                              subst (_≤ q₀') (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c) (asize c)) refl))) $
+                                                              while-≤ⁱ-elim
+                                                               (subst (annotate-β (While b c) bf₄ ≤ⁱ_) eq₀' $
+                                                                f ( bf₄
+                                                                  , while-≤ⁱ-introl eq₀
+                                                                      (has-bot inv₀)
+                                                                      (has-bot p₀)
+                                                                      (subst (_≤ⁱ a₀)
+                                                                             (annotate-ext λ n lt → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects (2 + asize c) (n + 2))
+                                                                                                                          (contra
+                                                                                                                             (λ e → =→≤ (+-inj-r (asize c) n 2 (+-comm (asize c) 2 ∙ e)))
+                                                                                                                             (<→≱ $ lt)))) ⁻¹)
+                                                                             (annotate-bot e₀))
+                                                                      (subst (_≤ q₀)
+                                                                        (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c) (asize c)) refl)) ⁻¹)
+                                                                        le)))
+                                                              .snd .snd .snd)
                            } }
+
