@@ -96,7 +96,8 @@ module AnInstrOrd {B : 𝒰}
     , ap (While b) e
 
   anc-lub : ∀ c {I : 𝒰} (F : I → AnStr Ob c)
-          → is-lub (anc-poset c) F (anc-sup c F)
+          → is-lub (anc-poset c)
+                   F (anc-sup c F)
   anc-lub  Skip             F =
     let sa = lubs (λ j → let (a , _) = strip-skip-r (F j .snd) in a) .Lub.has-lub in
     record {
@@ -114,14 +115,16 @@ module AnInstrOrd {B : 𝒰}
   anc-lub (Assign x e)      F =
     let sa = lubs (λ j → let (a , e) = strip-assign-r (F j .snd) in a) .Lub.has-lub in
     record {
-      fam≤lub = λ i → assign-≤ⁱ-intro2 (let (a , e) = strip-assign-r (F i .snd) in e) refl $
-                      sa .fam≤lub i
+      fam≤lub = λ i →
+                  let (af , ef) = strip-assign-r (F i .snd) in
+                  assign-≤ⁱ-intro2 ef refl $
+                  sa .fam≤lub i
     ; least = λ where (a' , eq) f →
-                          let (a1 , eq1) = strip-assign-r eq in
-                          assign-≤ⁱ-intro2 refl eq1 $
-                          sa .least a1 λ i →
-                                         let (af , ef) = strip-assign-r (F i .snd) in
-                                         assign-≤ⁱ-elim2 ef eq1 (f i)
+                         let (a1 , eq1) = strip-assign-r eq in
+                         assign-≤ⁱ-intro2 refl eq1 $
+                         sa .least a1 λ i →
+                                        let (af , ef) = strip-assign-r (F i .snd) in
+                                        assign-≤ⁱ-elim2 ef eq1 (f i)
     }
 
   anc-lub (Seq c₁ c₂)   {I} F =
@@ -258,64 +261,65 @@ module AnInstrOrd {B : 𝒰}
   anc-is-small : (c : Instr) (x : AnStr Ob c) (b : ℕ → Maybe B) → is-of-size 0ℓ (annotate-β c b ≤ⁱ x .fst)
   anc-is-small c x b = ≃→is-of-size (≤ⁱ≃=all ⁻¹) (size 0ℓ ⦃ s = Size-Σ ⦃ sa = Size-default ⦄ ⦄)
 
-  anc-↓-is-sup : (c : Instr) (x : AnStr Ob c) → is-lub (anc-poset c) (↓ᴮ-inclusion (anc-poset c) (anc-suplat c) (anc-β c) x) x
+  anc-↓-is-sup : (c : Instr) (x : AnStr Ob c) → is-lub (anc-poset c)
+                                                       (↓ᴮ-inclusion (anc-poset c) (anc-suplat c) (anc-β c) x) x
   anc-↓-is-sup Skip (a , e) =
-    let (o' , e') = strip-skip-r e
-        su = ↓-is-sup o' .least
-      in
+    let (o' , e') = strip-skip-r e in
     record {
       fam≤lub = λ where (bf , le) → le
     ; least = λ where (a'' , e'') f →
                         let (oo , eo) = strip-skip-r e'' in
                         skip-≤ⁱ-intro2 e' eo $
-                        su oo λ where (b , le) →
-                                        skip-≤ⁱ-elim2 refl eo $
-                                        f (single-at b 0 , skip-≤ⁱ-intro2 refl e' le)
+                        ↓-is-sup o' .least oo λ where (b , le) →
+                                                        skip-≤ⁱ-elim2 refl eo $
+                                                        f (single-at b 0 , skip-≤ⁱ-intro2 refl e' le)
     }
   anc-↓-is-sup (Assign x e) (a , eq) =
-    let (o' , eq') = strip-assign-r eq
-        su = ↓-is-sup o'
-      in
+    let (o' , eq') = strip-assign-r eq in
     record {
       fam≤lub = λ where (bf , le) → le
     ; least = λ where (a'' , eq'') f →
                         let (oo , eo) = strip-assign-r eq'' in
                         assign-≤ⁱ-intro2 eq' eo $
-                        su .least oo λ where (b , le) →
-                                               assign-≤ⁱ-elim2 refl eo $
-                                               f (single-at b 0 , assign-≤ⁱ-intro2 refl eq' le)
+                        ↓-is-sup o' .least oo λ where (b , le) →
+                                                         assign-≤ⁱ-elim2 refl eo $
+                                                         f (single-at b 0 , assign-≤ⁱ-intro2 refl eq' le)
     }
   anc-↓-is-sup (Seq c₁ c₂) (a , eq) =
-    let ih₁ = anc-↓-is-sup c₁
-        ih₂ = anc-↓-is-sup c₂
-        (a₁ , a₂ , eq₀ , e₁ , e₂) = strip-seq-r eq
+    let (a₁ , a₂ , eq₀ , e₁ , e₂) = strip-seq-r eq
+        ih₁ = anc-↓-is-sup c₁ (a₁ , e₁)
+        ih₂ = anc-↓-is-sup c₂ (a₂ , e₂)
       in
     record {
       fam≤lub = λ where (bf , le) →
                            let (le1 , le2) = seq-≤ⁱ-elim2 refl eq₀ le in
                            seq-≤ⁱ-intro2 refl eq₀
-                             (ih₁ (a₁ , e₁) .fam≤lub (bf , le1))
-                             (ih₂ (a₂ , e₂) .fam≤lub (shl bf (asize c₁) , le2))
+                             (ih₁ .fam≤lub (bf , le1))
+                             (ih₂ .fam≤lub (shl bf (asize c₁) , le2))
     ; least = λ where (a'' , eq'') f →
                         let (a₁' , a₂' , eq₀' , e₁' , e₂') = strip-seq-r eq'' in
                         seq-≤ⁱ-intro2 eq₀ eq₀'
-                          (ih₁ (a₁ , e₁) .least (a₁' , e₁')
+                          (ih₁ .least (a₁' , e₁')
                              λ where (bf , le) →
-                                         let bf₁ = filt bf (_<? asize c₁) in
-                                         subst (_≤ⁱ a₁') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt))
+                                         let bf₁ = filt bf (_<? asize c₁)
+                                             p₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)
+                                           in
+                                         subst (_≤ⁱ a₁') p₁
                                            ((seq-≤ⁱ-elim2 refl eq₀' $
                                              f ( bf₁
                                                , seq-≤ⁱ-intro2 refl eq₀
-                                                   (subst (_≤ⁱ a₁) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt) ⁻¹) le)
+                                                   (subst (_≤ⁱ a₁) (p₁ ⁻¹) le)
                                                    (subst (λ q → annotate q c₂ ≤ⁱ a₂)
                                                           (shl-filt-not {f = bf} {p = _<? asize c₁} {n = asize c₁}
                                                              (λ m le → reflects-false (<-reflects m (asize c₁)) (≤≃≯ $ le)) ⁻¹)
                                                           (annotate-bot e₂))))
                                              .fst))
-                          (ih₂ (a₂ , e₂) .least (a₂' , e₂')
+                          (ih₂ .least (a₂' , e₂')
                              λ where (bf , le) →
-                                        let bf₂ = shr bf (asize c₁) in
-                                        subst (λ q → annotate q c₂ ≤ⁱ a₂') (shl-shr {f = bf} {n = asize c₁})
+                                        let bf₂ = shr bf (asize c₁)
+                                            p₂ = shl-shr {f = bf} {n = asize c₁}
+                                          in
+                                        subst (λ q → annotate q c₂ ≤ⁱ a₂') p₂
                                           ((seq-≤ⁱ-elim2 refl eq₀' $
                                             f ( bf₂
                                               , seq-≤ⁱ-intro2 refl eq₀
@@ -323,26 +327,25 @@ module AnInstrOrd {B : 𝒰}
                                                          (annotate-ext {c = c₁} {f = λ _ → bot} {g = unᵐ-β ∘ shr bf (asize c₁)}
                                                               λ n lt → ap unᵐ-β (if-false {b = asize c₁ ≤? n} (reflects-false (≤-reflects (asize c₁) n) (<≃≱ $ lt))) ⁻¹)
                                                          (annotate-bot e₁))
-                                                  (subst (λ q → annotate q c₂ ≤ⁱ a₂) (shl-shr {f = bf} {n = asize c₁} ⁻¹) le)))
+                                                  (subst (λ q → annotate q c₂ ≤ⁱ a₂) (p₂ ⁻¹) le)))
                                             .snd))
     }
   anc-↓-is-sup (ITE b c₁ c₂) (a , eq) =
-    let ih₁ = anc-↓-is-sup c₁
-        ih₂ = anc-↓-is-sup c₂
-        (p₁ , a₁ , p₂ , a₂ , q , eq₀ , e₁ , e₂) = strip-ite-r eq
+    let (p₁ , a₁ , p₂ , a₂ , q , eq₀ , e₁ , e₂) = strip-ite-r eq
+        ih₁ = anc-↓-is-sup c₁ (a₁ , e₁)
+        ih₂ = anc-↓-is-sup c₂ (a₂ , e₂)
      in
     record {
       fam≤lub = λ where (bf , le) →
                           let (le1 , le2 , le3 , le4 , le5) = ite-≤ⁱ-elim2 refl eq₀ le in
                           ite-≤ⁱ-intro2 refl eq₀ le1
-                            (ih₁ (a₁ , e₁) .fam≤lub (shl bf 1 , le2))
+                            (ih₁ .fam≤lub (shl bf 1 , le2))
                             le3
-                            (ih₂ (a₂ , e₂) .fam≤lub (shl bf (2 + asize c₁) , le4))
+                            (ih₂ .fam≤lub (shl bf (2 + asize c₁) , le4))
                             le5
     ; least = λ where (a'' , eq'') f →
                         let (p₁' , a₁' , p₂' , a₂' , q' , eq₀' , e₁' , e₂') = strip-ite-r eq'' in
-                        subst (_≤ⁱ a'') (eq₀ ⁻¹) $
-                        ite-≤ⁱ-intro2 refl eq₀'
+                        ite-≤ⁱ-intro2 eq₀ eq₀'
                           (↓-is-sup p₁ .least p₁'
                              λ where (b' , le) →
                                         let bf₁ = single-at b' 0 in
@@ -356,17 +359,18 @@ module AnInstrOrd {B : 𝒰}
                                                        (annotate-bot e₂))
                                                 (has-bot q)))
                                          .fst)
-                          (ih₁ (a₁ , e₁) .least (a₁' , e₁')
+                          (ih₁ .least (a₁' , e₁')
                               λ where (bf , le) →
-                                        let bf₂ = shr (filt bf (_<? asize c₁)) 1 in
-                                        subst (_≤ⁱ a₁') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)) $
-                                        subst (λ q → annotate q c₁ ≤ⁱ a₁') (shl-shr {f = filt bf (_<? asize c₁)} {n = 1}) $
+                                        let bf₂ = shr (filt bf (_<? asize c₁)) 1
+                                            p₂₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)
+                                            p₂₂ = shl-shr {f = filt bf (_<? asize c₁)} {n = 1}
+                                          in
+                                        subst (_≤ⁱ a₁') p₂₁ $ subst (λ q → annotate q c₁ ≤ⁱ a₁') p₂₂ $
                                         (ite-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₂
                                            , ite-≤ⁱ-intro2 refl eq₀
                                                 (has-bot p₁)
-                                                (subst (λ q → annotate q c₁ ≤ⁱ a₁) (shl-shr {f = filt bf (_<? asize c₁)} {n = 1} ⁻¹) $
-                                                 subst (_≤ⁱ a₁) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt) ⁻¹) le)
+                                                (subst (λ q → annotate q c₁ ≤ⁱ a₁) (p₂₂ ⁻¹) $ subst (_≤ⁱ a₁) (p₂₁ ⁻¹) le)
                                                 (subst (λ q → unᵐ-β q ≤ p₂) (if-false (reflects-false (<-reflects (asize c₁) (asize c₁)) <-irr) ⁻¹)
                                                     (has-bot p₂))
                                                 (subst (_≤ⁱ a₂)
@@ -383,8 +387,10 @@ module AnInstrOrd {B : 𝒰}
                                          .snd .fst)
                           (↓-is-sup p₂ .least p₂'
                              λ where (b' , le) →
-                                        let bf₃ = single-at b' (1 + asize c₁) in
-                                        subst (_≤ p₂') (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁) (asize c₁)) refl))) $
+                                        let bf₃ = single-at b' (1 + asize c₁)
+                                            p₃ = ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁) (asize c₁)) refl))
+                                          in
+                                        subst (_≤ p₂') p₃ $
                                         (ite-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₃
                                            , ite-≤ⁱ-intro2 refl eq₀ (has-bot p₁)
@@ -392,7 +398,7 @@ module AnInstrOrd {B : 𝒰}
                                                       (annotate-ext λ n lt → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects (1 + asize c₁) (n + 1))
                                                                                                    (contra (λ e → =→≤ (suc-inj (e ∙ +-comm n 1))) (<→≱ $ lt)))) ⁻¹)
                                                       (annotate-bot e₁))
-                                               (subst (_≤ p₂) (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁) (asize c₁)) refl)) ⁻¹) le)
+                                               (subst (_≤ p₂) (p₃ ⁻¹) le)
                                                (subst (λ q → annotate q c₂ ≤ⁱ a₂)
                                                       (shl-single-at-not {n = 1 + asize c₁} {m = 2 + asize c₁} (s<s <-ascend) ⁻¹)
                                                       (annotate-bot e₂))
@@ -401,12 +407,13 @@ module AnInstrOrd {B : 𝒰}
                                                                                 λ p → id≠plus-suc (p ∙ +-suc-r (asize c₁) (asize c₂) ⁻¹)) ⁻¹)
                                                       (has-bot q))))
                                           .snd .snd .fst)
-                          (ih₂ (a₂ , e₂) .least (a₂' , e₂')
+                          (ih₂ .least (a₂' , e₂')
                               λ where (bf , le) →
-                                        let bf₄ = shr (filt bf (_<? asize c₂)) (2 + asize c₁) in
-                                        subst (_≤ⁱ a₂') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₂)) lt)) $
-                                        subst (λ q → annotate q c₂ ≤ⁱ a₂')
-                                              (shl-shr {f = filt bf (_<? asize c₂)} {n = 2 + asize c₁}) $
+                                        let bf₄ = shr (filt bf (_<? asize c₂)) (2 + asize c₁)
+                                            p₄₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₂)) lt)
+                                            p₄₂ = shl-shr {f = filt bf (_<? asize c₂)} {n = 2 + asize c₁}
+                                          in
+                                        subst (_≤ⁱ a₂') p₄₁ $ subst (λ q → annotate q c₂ ≤ⁱ a₂') p₄₂ $
                                         (ite-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₄
                                            , ite-≤ⁱ-intro2 refl eq₀ (has-bot p₁)
@@ -418,9 +425,7 @@ module AnInstrOrd {B : 𝒰}
                                                 (subst (λ z → unᵐ-β z ≤ p₂)
                                                        (if-false (reflects-false (<-reflects (asize c₁) (asize c₁)) <-irr) ⁻¹)
                                                        (has-bot p₂))
-                                                (subst (λ q → annotate q c₂ ≤ⁱ a₂)
-                                                       (shl-shr {f = filt bf (_<? asize c₂)} {n = 2 + asize c₁} ⁻¹) $
-                                                 subst (_≤ⁱ a₂) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₂)) lt) ⁻¹) le)
+                                                (subst (λ q → annotate q c₂ ≤ⁱ a₂) (p₄₂ ⁻¹) $ subst (_≤ⁱ a₂) (p₄₁ ⁻¹) le)
                                                 (subst (λ z → unᵐ-β z ≤ q)
                                                        (( if-true (reflects-true (<-reflects (asize c₁) (1 + asize c₁ + asize c₂))
                                                                                  (<-+-r <-ascend))
@@ -431,9 +436,10 @@ module AnInstrOrd {B : 𝒰}
                                           .snd .snd .snd .fst)
                           (↓-is-sup q .least q'
                              λ where (b' , le) →
-                                        let bf₅ = single-at b' (2 + asize c₁ + asize c₂) in
-                                        subst (_≤ q')
-                                              (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁ + asize c₂) (asize c₁ + asize c₂)) refl))) $
+                                        let bf₅ = single-at b' (2 + asize c₁ + asize c₂)
+                                            p₅ = ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁ + asize c₂) (asize c₁ + asize c₂)) refl))
+                                          in
+                                        subst (_≤ q') p₅ $
                                         (ite-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₅
                                            , ite-≤ⁱ-intro2 refl eq₀ (has-bot p₁)
@@ -455,25 +461,22 @@ module AnInstrOrd {B : 𝒰}
                                                                                                                       (+-comm (asize c₂) (2 + asize c₁) ∙ e)))
                                                                                                        (<→≱ $ lt)))) ⁻¹)
                                                        (annotate-bot e₂))
-                                                (subst (_≤ q)
-                                                       (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁ + asize c₂) (asize c₁ + asize c₂)) refl)) ⁻¹)
-                                                       le)))
+                                                (subst (_≤ q) (p₅ ⁻¹) le)))
                                           .snd .snd .snd .snd)
     }
   anc-↓-is-sup (While b c) (a , eq) =
-    let ih = anc-↓-is-sup c
-        (inv₀ , p₀ , a₀ , q₀ , eq₀ , e₀) = strip-while-r eq
+    let (inv₀ , p₀ , a₀ , q₀ , eq₀ , e₀) = strip-while-r eq
+        ih = anc-↓-is-sup c (a₀ , e₀)
       in
     record {
       fam≤lub = λ where (bf , le) →
                            let (le1 , le2 , le3 , le4) = while-≤ⁱ-elim2 refl eq₀ le in
                            while-≤ⁱ-intro2 refl eq₀ le1 le2
-                             (ih (a₀ , e₀) .fam≤lub (shl bf 2 , le3))
+                             (ih .fam≤lub (shl bf 2 , le3))
                              le4
     ; least = λ where (a'' , eq'') f →
                         let (inv₀' , p₀' , a₀' , q₀' , eq₀' , e₀') = strip-while-r eq'' in
-                        subst (_≤ⁱ a'') (eq₀ ⁻¹) $
-                        while-≤ⁱ-intro2 refl eq₀'
+                        while-≤ⁱ-intro2 eq₀ eq₀'
                           (↓-is-sup inv₀ .least inv₀'
                              λ where (b' , le) →
                                         let bf₁ = single-at b' 0 in
@@ -499,20 +502,19 @@ module AnInstrOrd {B : 𝒰}
                                                        (annotate-bot e₀))
                                               (has-bot q₀)))
                                         .snd .fst)
-                          (ih (a₀ , e₀) .least (a₀' , e₀')
+                          (ih .least (a₀' , e₀')
                               λ where (bf , le) →
-                                       let bf₃ = shr (filt bf (_<? asize c)) 2 in
-                                        subst (_≤ⁱ a₀') (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c)) lt)) $
-                                        subst (λ q → annotate q c ≤ⁱ a₀')
-                                              (shl-shr {f = filt bf (_<? asize c)} {n = 2}) $
+                                       let bf₃ = shr (filt bf (_<? asize c)) 2
+                                           p₃₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c)) lt)
+                                           p₃₂ = shl-shr {f = filt bf (_<? asize c)} {n = 2}
+                                         in
+                                        subst (_≤ⁱ a₀') p₃₁ $ subst (λ q → annotate q c ≤ⁱ a₀') p₃₂ $
                                         (while-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₃
                                            , while-≤ⁱ-intro2 refl eq₀
                                                (has-bot inv₀)
                                                (has-bot p₀)
-                                               (subst (λ q → annotate q c ≤ⁱ a₀)
-                                                       (shl-shr {f = filt bf (_<? asize c)} {n = 2} ⁻¹) $
-                                                subst (_≤ⁱ a₀) (annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c)) lt) ⁻¹) le)
+                                               (subst (λ q → annotate q c ≤ⁱ a₀) (p₃₂ ⁻¹) $ subst (_≤ⁱ a₀) (p₃₁ ⁻¹) le)
                                                (subst (λ z → unᵐ-β z ≤ q₀)
                                                       (if-false (reflects-false (<-reflects (asize c) (asize c)) <-irr) ⁻¹)
                                                       (has-bot q₀))
@@ -520,8 +522,10 @@ module AnInstrOrd {B : 𝒰}
                                         .snd .snd .fst)
                           (↓-is-sup q₀ .least q₀'
                              λ where (b' , le) →
-                                       let bf₄ = single-at b' (2 + asize c) in
-                                       subst (_≤ q₀') (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c) (asize c)) refl))) $
+                                       let bf₄ = single-at b' (2 + asize c)
+                                           p₄ = ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c) (asize c)) refl))
+                                         in
+                                       subst (_≤ q₀') p₄ $
                                        (while-≤ⁱ-elim2 refl eq₀' $
                                         f ( bf₄
                                           , while-≤ⁱ-intro2 refl eq₀
@@ -533,9 +537,7 @@ module AnInstrOrd {B : 𝒰}
                                                                                                      (λ e → =→≤ (+-inj-r (asize c) n 2 (+-comm (asize c) 2 ∙ e)))
                                                                                                      (<→≱ $ lt)))) ⁻¹)
                                                      (annotate-bot e₀))
-                                              (subst (_≤ q₀)
-                                                (ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c) (asize c)) refl)) ⁻¹)
-                                                le)))
+                                              (subst (_≤ q₀) (p₄ ⁻¹) le)))
                                        .snd .snd .snd)
     }
 

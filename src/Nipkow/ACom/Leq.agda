@@ -135,7 +135,7 @@ module AnInstrLeq
              → AnSeq c₁ c₂ ≤ⁱ c
              → Σ[ c₃ ꞉ AnInstr A ] Σ[ c₄ ꞉ AnInstr A ]
                  (c ＝ AnSeq c₃ c₄) × c₁ ≤ⁱ c₃ × c₂ ≤ⁱ c₄
-    seq-≤ⁱ-eliml (Seq-≤ⁱ {c₁} {c₂} {c₃} {c₄} le₁ le₂) = c₃ , c₄ , refl , le₁ , le₂
+    seq-≤ⁱ-eliml (Seq-≤ⁱ {c₃} {c₄} le₁ le₂) = c₃ , c₄ , refl , le₁ , le₂
 
     seq-≤ⁱ-elim : ∀ {c₁ c₂ c₃ c₄}
                 → AnSeq c₁ c₂ ≤ⁱ AnSeq c₃ c₄
