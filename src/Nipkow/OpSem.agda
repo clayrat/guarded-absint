@@ -37,7 +37,7 @@ data Exec : Instr → State → State → 𝒰 where
   ExSkip   : ∀ {s} → Exec Skip s s
   ExAssign : ∀ {x e s s'}
            -- → SUpdate s x (aval s e) s'
-           → s' ＝ stupd x (aval s e) s
+           → stupd x (aval s e) s ＝ s'
            → Exec (Assign x e) s s'
   ExSeq    : ∀ {s s' s'' i₁ i₂}
            → Exec i₁ s s' → Exec i₂ s' s'' → Exec (Seq i₁ i₂) s s''

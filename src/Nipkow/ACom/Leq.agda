@@ -13,10 +13,6 @@ open import Nipkow.ACom
 module AnInstrLeq
     (A : 𝒰 (ℓsuc 0ℓ))
     (leq : A → A → 𝒰)
-    (leq-prop : ∀ {a b} → is-prop (leq a b))
-    (leq-refl : ∀ {x} → leq x x)
-    (leq-trans : ∀ {x y z} → leq x y → leq y z → leq x z)
-    (leq-antisym : ∀ {x y} → leq x y → leq y x → x ＝ y)
   where
 
   open List1.List1
@@ -56,15 +52,17 @@ module AnInstrLeq
 
   -- structural helpers
   opaque
-    skip-≤ⁱ-introl : ∀ {s c s'}
-                   → c ＝ AnSkip s' → leq s s'
-                   → AnSkip s ≤ⁱ c
-    skip-≤ⁱ-introl {s} eq le = subst (AnSkip s ≤ⁱ_) (eq ⁻¹) (Skip-≤ⁱ le)
 
-    skip-≤ⁱ-intror : ∀ {s c s'}
-                   → c ＝ AnSkip s → leq s s'
-                  → c ≤ⁱ AnSkip s'
-    skip-≤ⁱ-intror {s'} eq le = subst (_≤ⁱ AnSkip s') (eq ⁻¹) (Skip-≤ⁱ le)
+    -- Skip
+
+    skip-≤ⁱ-intro2 : ∀ {c₁ c₂ a₁ a₂}
+                    → c₁ ＝ AnSkip a₁
+                    → c₂ ＝ AnSkip a₂
+                    → leq a₁ a₂
+                    → c₁ ≤ⁱ c₂
+    skip-≤ⁱ-intro2 {c₂} {a₁} eq₁ eq₂ le =
+      subst (_≤ⁱ c₂) (eq₁ ⁻¹) $
+      subst (AnSkip a₁ ≤ⁱ_) (eq₂ ⁻¹) (Skip-≤ⁱ le)
 
     skip-≤ⁱ-eliml : ∀ {a₁ c}
                   → AnSkip a₁ ≤ⁱ c
@@ -76,17 +74,27 @@ module AnInstrLeq
                  → leq s s'
     skip-≤ⁱ-elim (Skip-≤ⁱ le) = le
 
-    assign-≤ⁱ-introl : ∀ {x e s c s'}
-                     → c ＝ AnAssign x e s' → leq s s'
-                     → AnAssign x e s ≤ⁱ c
-    assign-≤ⁱ-introl {x} {e} {s} eq le =
-      subst (AnAssign x e s ≤ⁱ_) (eq ⁻¹) (Assign-≤ⁱ refl refl le)
+    skip-≤ⁱ-elim2 : ∀ {c₁ c₂ a₁ a₂}
+                    → c₁ ＝ AnSkip a₁
+                    → c₂ ＝ AnSkip a₂
+                    → c₁ ≤ⁱ c₂
+                    → leq a₁ a₂
+    skip-≤ⁱ-elim2 {c₁} {a₂} e₁ e₂ le =
+      skip-≤ⁱ-elim $
+      subst (_≤ⁱ AnSkip a₂) e₁ $
+      subst (c₁ ≤ⁱ_) e₂ le
 
-    assign-≤ⁱ-intror : ∀ {x e s c s'}
-                     → c ＝ AnAssign x e s → leq s s'
-                     → c ≤ⁱ AnAssign x e s'
-    assign-≤ⁱ-intror {x} {e} {s'} eq le =
-      subst (_≤ⁱ AnAssign x e s') (eq ⁻¹) (Assign-≤ⁱ refl refl le)
+    -- Assign
+
+    assign-≤ⁱ-intro2 : ∀ {c₁ c₂ x e a₁ a₂}
+                     → c₁ ＝ AnAssign x e a₁
+                     → c₂ ＝ AnAssign x e a₂
+                     → leq a₁ a₂
+                     → c₁ ≤ⁱ c₂
+    assign-≤ⁱ-intro2 {c₂} {x} {e} {a₁} eq₁ eq₂ le =
+      subst (_≤ⁱ c₂) (eq₁ ⁻¹) $
+      subst (AnAssign x e a₁ ≤ⁱ_) (eq₂ ⁻¹) $
+      Assign-≤ⁱ refl refl le
 
     assign-≤ⁱ-eliml : ∀ {x e a₁ c}
                     → AnAssign x e a₁ ≤ⁱ c
@@ -100,17 +108,28 @@ module AnInstrLeq
       let (s' , e , le) = assign-≤ⁱ-eliml p in
       subst (leq s) (AnAssign-inj e .snd .snd ⁻¹) le
 
-    seq-≤ⁱ-introl : ∀ {c₁ c₂ c c₃ c₄}
-                  → c ＝ AnSeq c₃ c₄ → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
-                  → AnSeq c₁ c₂ ≤ⁱ c
-    seq-≤ⁱ-introl {c₁} {c₂} eq le₁ le₂ =
-      subst (AnSeq c₁ c₂ ≤ⁱ_) (eq ⁻¹) (Seq-≤ⁱ le₁ le₂)
+    assign-≤ⁱ-elim2 : ∀ {c₁ c₂ x e a₁ a₂}
+                     → c₁ ＝ AnAssign x e a₁
+                     → c₂ ＝ AnAssign x e a₂
+                     → c₁ ≤ⁱ c₂
+                     → leq a₁ a₂
+    assign-≤ⁱ-elim2 {c₁} {x} {e} {a₂} e₁ e₂ le =
+      assign-≤ⁱ-elim $
+      subst (_≤ⁱ AnAssign x e a₂) e₁ $
+      subst (c₁ ≤ⁱ_) e₂ le
 
-    seq-≤ⁱ-intror : ∀ {c₁ c₂ c c₃ c₄}
-                  → c ＝ AnSeq c₁ c₂ → c₁ ≤ⁱ c₃ → c₂ ≤ⁱ c₄
-                  → c ≤ⁱ AnSeq c₃ c₄
-    seq-≤ⁱ-intror {c₃} {c₄} eq le₁ le₂ =
-      subst (_≤ⁱ AnSeq c₃ c₄) (eq ⁻¹) (Seq-≤ⁱ le₁ le₂)
+    -- Seq
+
+    seq-≤ⁱ-intro2 : ∀ {c₁ c₂ c₁₁ c₂₁ c₁₂ c₂₂}
+                  → c₁ ＝ AnSeq c₁₁ c₂₁
+                  → c₂ ＝ AnSeq c₁₂ c₂₂
+                  → c₁₁ ≤ⁱ c₁₂
+                  → c₂₁ ≤ⁱ c₂₂
+                  → c₁ ≤ⁱ c₂
+    seq-≤ⁱ-intro2 {c₂} {c₁₁} {c₂₁} eq₁ eq₂ le₁ le₂ =
+        subst (_≤ⁱ c₂) (eq₁ ⁻¹) $
+        subst (AnSeq c₁₁ c₂₁ ≤ⁱ_) (eq₂ ⁻¹) $
+        Seq-≤ⁱ le₁ le₂
 
     seq-≤ⁱ-eliml : ∀ {c₁ c₂ c}
              → AnSeq c₁ c₂ ≤ⁱ c
@@ -128,19 +147,31 @@ module AnInstrLeq
         subst (c₁ ≤ⁱ_) (e₁ ⁻¹) le₁
       , subst (c₂ ≤ⁱ_) (e₂ ⁻¹) le₂
 
-    ite-≤ⁱ-introl : ∀ {b p₁ c₁ p₂ c₂ q₁ c p₃ c₃ p₄ c₄ q₂}
-                  → c ＝ AnITE b p₃ c₃ p₄ c₄ q₂
-                  → leq p₁ p₃ → c₁ ≤ⁱ c₃ → leq p₂ p₄ → c₂ ≤ⁱ c₄ → leq q₁ q₂
-                  → AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ c
-    ite-≤ⁱ-introl {b} {p₁} {c₁} {p₂} {c₂} {q₁} eq le₁ le₂ le₃ le₄ le₅ =
-      subst (AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ_) (eq ⁻¹) (ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅)
+    seq-≤ⁱ-elim2 : ∀ {c₁ c₂ c₁₁ c₂₁ c₁₂ c₂₂}
+                 → c₁ ＝ AnSeq c₁₁ c₂₁
+                 → c₂ ＝ AnSeq c₁₂ c₂₂
+                 → c₁ ≤ⁱ c₂
+                 → c₁₁ ≤ⁱ c₁₂ × c₂₁ ≤ⁱ c₂₂
+    seq-≤ⁱ-elim2 {c₁} {c₁₂} {c₂₂} e₁ e₂ le =
+      seq-≤ⁱ-elim $
+      subst (_≤ⁱ AnSeq c₁₂ c₂₂) e₁ $
+      subst (c₁ ≤ⁱ_) e₂ le
 
-    ite-≤ⁱ-intror : ∀ {b p₁ c₁ p₂ c₂ q₁ c p₃ c₃ p₄ c₄ q₂}
-                  → c ＝ AnITE b p₁ c₁ p₂ c₂ q₁
-                  → leq p₁ p₃ → c₁ ≤ⁱ c₃ → leq p₂ p₄ → c₂ ≤ⁱ c₄ → leq q₁ q₂
-                  → c ≤ⁱ AnITE b p₃ c₃ p₄ c₄ q₂
-    ite-≤ⁱ-intror {b} {p₃} {c₃} {p₄} {c₄} {q₂} eq le₁ le₂ le₃ le₄ le₅ =
-      subst (_≤ⁱ AnITE b p₃ c₃ p₄ c₄ q₂) (eq ⁻¹) (ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅)
+    -- ITE
+
+    ite-≤ⁱ-intro2 : ∀ {b c₁ p₁₁ c₁₁ p₂₁ c₂₁ q₁ c₂ p₁₂ c₁₂ p₂₂ c₂₂ q₂}
+                  → c₁ ＝ AnITE b p₁₁ c₁₁ p₂₁ c₂₁ q₁
+                  → c₂ ＝ AnITE b p₁₂ c₁₂ p₂₂ c₂₂ q₂
+                  → leq p₁₁ p₁₂
+                  → c₁₁ ≤ⁱ c₁₂
+                  → leq p₂₁ p₂₂
+                  → c₂₁ ≤ⁱ c₂₂
+                  → leq q₁ q₂
+                  → c₁ ≤ⁱ c₂
+    ite-≤ⁱ-intro2 {b} {p₁₁} {c₁₁} {p₂₁} {c₂₁} {q₁} {c₂} eq₁ eq₂ le₁ le₂ le₃ le₄ le₅ =
+      subst (_≤ⁱ c₂) (eq₁ ⁻¹) $
+      subst (AnITE b p₁₁ c₁₁ p₂₁ c₂₁ q₁ ≤ⁱ_) (eq₂ ⁻¹) $
+      ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅
 
     ite-≤ⁱ-eliml : ∀ {b p₁ c₁ p₂ c₂ q₁ c}
                  → AnITE b p₁ c₁ p₂ c₂ q₁ ≤ⁱ c
@@ -163,21 +194,30 @@ module AnInstrLeq
       , subst (c₂ ≤ⁱ_) (eq₄ ⁻¹) le₄
       , subst (leq q₁) (eq₅ ⁻¹) le₅
 
-    while-≤ⁱ-introl : ∀ {inv₁ b p₁ c₁ q₁ c inv₂ p₂ c₂ q₂}
-                    → c ＝ AnWhile inv₂ b p₂ c₂ q₂
-                    → leq inv₁ inv₂ → leq p₁ p₂
-                    → c₁ ≤ⁱ c₂ → leq q₁ q₂
-                    → AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ c
-    while-≤ⁱ-introl {inv₁} {b} {p₁} {c₁} {q₁} {c} eq le₁ le₂ le₃ le₄ =
-      subst (AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ_) (eq ⁻¹) (While-≤ⁱ le₁ refl le₂ le₃ le₄)
+    ite-≤ⁱ-elim2 : ∀ {b c₁ p₁₁ c₁₁ p₂₁ c₂₁ q₁ c₂ p₁₂ c₁₂ p₂₂ c₂₂ q₂}
+                 → c₁ ＝ AnITE b p₁₁ c₁₁ p₂₁ c₂₁ q₁
+                 → c₂ ＝ AnITE b p₁₂ c₁₂ p₂₂ c₂₂ q₂
+                 → c₁ ≤ⁱ c₂
+                 → leq p₁₁ p₁₂ × c₁₁ ≤ⁱ c₁₂ × leq p₂₁ p₂₂ × c₂₁ ≤ⁱ c₂₂ × leq q₁ q₂
+    ite-≤ⁱ-elim2 {b} {c₁} {p₁₂} {c₁₂} {p₂₂} {c₂₂} {q₂} e₁ e₂ le =
+      ite-≤ⁱ-elim $
+      subst (_≤ⁱ AnITE b p₁₂ c₁₂ p₂₂ c₂₂ q₂) e₁ $
+      subst (c₁ ≤ⁱ_) e₂ le
 
-    while-≤ⁱ-intror : ∀ {inv₁ b p₁ c₁ q₁ c inv₂ p₂ c₂ q₂}
-                    → c ＝ AnWhile inv₁ b p₁ c₁ q₁
-                    → leq inv₁ inv₂ → leq p₁ p₂
-                    → c₁ ≤ⁱ c₂ → leq q₁ q₂
-                    → c ≤ⁱ AnWhile inv₂ b p₂ c₂ q₂
-    while-≤ⁱ-intror {b} {c} {inv₂} {p₂} {c₂} {q₂} eq le₁ le₂ le₃ le₄ =
-      subst (_≤ⁱ AnWhile inv₂ b p₂ c₂ q₂) (eq ⁻¹) (While-≤ⁱ le₁ refl le₂ le₃ le₄)
+    -- While
+
+    while-≤ⁱ-intro2 : ∀ {c₁ c₂ b inv₁ p₁ c₁₁ q₁ inv₂ p₂ c₂₂ q₂}
+                    → c₁ ＝ AnWhile inv₁ b p₁ c₁₁ q₁
+                    → c₂ ＝ AnWhile inv₂ b p₂ c₂₂ q₂
+                    → leq inv₁ inv₂
+                    → leq p₁ p₂
+                    → c₁₁ ≤ⁱ c₂₂
+                    → leq q₁ q₂
+                    → c₁ ≤ⁱ c₂
+    while-≤ⁱ-intro2 {c₂} {b} {inv₁} {p₁} {c₁₁} {q₁} eq₁ eq₂ le₁ le₂ le₃ le₄ =
+      subst (_≤ⁱ c₂) (eq₁ ⁻¹) $
+      subst (AnWhile inv₁ b p₁ c₁₁ q₁ ≤ⁱ_) (eq₂ ⁻¹) $
+      While-≤ⁱ le₁ refl le₂ le₃ le₄
 
     while-≤ⁱ-eliml : ∀ {inv₁ b p₁ c₁ q₁ c}
                    → AnWhile inv₁ b p₁ c₁ q₁ ≤ⁱ c
@@ -199,31 +239,17 @@ module AnInstrLeq
       , subst (c₁ ≤ⁱ_) (eq₃ ⁻¹) le3
       , subst (leq q₁) (eq₄ ⁻¹) le4
 
-  -- thinness
+    while-≤ⁱ-elim2 : ∀ {c₁ c₂ b inv₁ p₁ c₁₁ q₁ inv₂ p₂ c₂₂ q₂}
+                    → c₁ ＝ AnWhile inv₁ b p₁ c₁₁ q₁
+                    → c₂ ＝ AnWhile inv₂ b p₂ c₂₂ q₂
+                    → c₁ ≤ⁱ c₂
+                    → leq inv₁ inv₂ × leq p₁ p₂ × c₁₁ ≤ⁱ c₂₂ × leq q₁ q₂
+    while-≤ⁱ-elim2 {c₁} {b} {inv₂} {p₂} {c₂₂} {q₂} e₁ e₂ le =
+      while-≤ⁱ-elim $
+      subst (_≤ⁱ AnWhile inv₂ b p₂ c₂₂ q₂) e₁ $
+      subst (c₁ ≤ⁱ_) e₂ le
 
-  ≤ⁱ-prop : ∀ {c₁ c₂} → is-prop (c₁ ≤ⁱ c₂)
-  ≤ⁱ-prop (Skip-≤ⁱ le₁)                        (Skip-≤ⁱ le₂)                        =
-    ap Skip-≤ⁱ (leq-prop le₁ le₂)
-  ≤ⁱ-prop (Assign-≤ⁱ {x₁} {x₂} p₁₁ p₂₁ le₁)    (Assign-≤ⁱ p₁₂ p₂₂ le₂)              =
-      ap² (λ x y → Assign-≤ⁱ x y le₁) (is-discrete→is-set auto x₁ x₂ p₁₁ p₁₂) (hlevel 1 p₂₁ p₂₂)
-    ∙ ap (Assign-≤ⁱ p₁₂ p₂₂) (leq-prop le₁ le₂)
-  ≤ⁱ-prop (Seq-≤ⁱ le₁₁ le₂₁)                   (Seq-≤ⁱ le₁₂ le₂₂)                   =
-    ap² Seq-≤ⁱ (≤ⁱ-prop le₁₁ le₁₂) (≤ⁱ-prop le₂₁ le₂₂)
-  ≤ⁱ-prop (ITE-≤ⁱ e₁ le₁₁ le₂₁ le₃₁ le₄₁ le₅₁) (ITE-≤ⁱ e₂ le₁₂ le₂₂ le₃₂ le₄₂ le₅₂) =
-      ap² (λ x y → ITE-≤ⁱ x y le₂₁ le₃₁ le₄₁ le₅₁) (hlevel 1 e₁ e₂) (leq-prop le₁₁ le₁₂)
-    ∙ ap² (λ x y → ITE-≤ⁱ e₂ le₁₂ x y le₄₁ le₅₁) (≤ⁱ-prop le₂₁ le₂₂) (leq-prop le₃₁ le₃₂)
-    ∙ ap² (ITE-≤ⁱ e₂ le₁₂ le₂₂ le₃₂) (≤ⁱ-prop le₄₁ le₄₂) (leq-prop le₅₁ le₅₂)
-  ≤ⁱ-prop (While-≤ⁱ le₁₁ e₁ le₂₁ le₃₁ le₄₁)    (While-≤ⁱ le₁₂ e₂ le₂₂ le₃₂ le₄₂)   =
-      ap² (λ x y → While-≤ⁱ x y le₂₁ le₃₁ le₄₁) (leq-prop le₁₁ le₁₂) (hlevel 1 e₁ e₂)
-    ∙ ap² (λ x y → While-≤ⁱ le₁₂ e₂ x y le₄₁) (leq-prop le₂₁ le₂₂) (≤ⁱ-prop le₃₁ le₃₂)
-    ∙ ap (While-≤ⁱ le₁₂ e₂ le₂₂ le₃₂) (leq-prop le₄₁ le₄₂)
-
-  instance
-    H-Level-≤ⁱ : ∀ {n c₁ c₂} → ⦃ n ≥ʰ 1 ⦄ → H-Level n (c₁ ≤ⁱ c₂)
-    H-Level-≤ⁱ ⦃ s≤ʰs _ ⦄ = hlevel-basic-instance 1 ≤ⁱ-prop
-    {-# OVERLAPPING H-Level-≤ⁱ #-}
-
-  -- equivalence to strip + all2
+  -- conversion to strip + all2
 
   ≤ⁱ→=all : ∀ {c₁ c₂} → c₁ ≤ⁱ c₂ → (strip c₁ ＝ strip c₂) × All²₁ leq (annos c₁) (annos c₂)
   ≤ⁱ→=all (Skip-≤ⁱ le)                   =
@@ -251,12 +277,12 @@ module AnInstrLeq
     let (a₁ , e₁) = strip-skip-r e
         (_ , le) = subst (λ x → All²₁ leq (annos x) [ a₂ ]₁) e₁ a
       in
-    skip-≤ⁱ-intror e₁ le
+    skip-≤ⁱ-intro2 e₁ refl le
   =all→≤ⁱ {c₁} {c₂ = AnAssign x₂ e₂ a₂}           e a =
     let (a₁ , e₁) = strip-assign-r e
         (_ , le) = subst (λ x → All²₁ leq (annos x) [ a₂ ]₁) e₁ a
       in
-    assign-≤ⁱ-intror e₁ le
+    assign-≤ⁱ-intro2 e₁ refl le
   =all→≤ⁱ {c₁} {c₂ = AnSeq c₁₂ c₂₂}               e a =
     let (a₁ , a₂ , e₁ , e₂ , e₃) = strip-seq-r e
         (le₁ , le₂) = All²₁-split
@@ -264,7 +290,7 @@ module AnInstrLeq
                            (reflects-true (reflects-instr (strip a₁) (strip c₁₂)) e₂))
                         (subst (λ x → All²₁ leq (annos x) (annos c₁₂ ++₁ annos c₂₂)) e₁ a)
       in
-    seq-≤ⁱ-intror e₁ (=all→≤ⁱ e₂ le₁) (=all→≤ⁱ e₃ le₂)
+    seq-≤ⁱ-intro2 e₁ refl (=all→≤ⁱ e₂ le₁) (=all→≤ⁱ e₃ le₂)
   =all→≤ⁱ {c₁} {c₂ = AnITE b₂ p₁₂ c₁₂ p₂₂ c₂₂ q₂} e a =
     let (p₃ , a₁ , p₄ , a₂ , q , e₀ , e₁ , e₂) = strip-ite-r e
         lp₁ = length-annos-same {c₁ = a₁} $ reflects-true (reflects-instr (strip a₁) (strip c₁₂)) e₁
@@ -278,7 +304,7 @@ module AnInstrLeq
         (le₂₁ , le₂₂) = All²-∶∶₁-l le₁₁
         (le₃₁ , le₃₂) = All²-∶∶₁-l le₁₂
       in
-    ite-≤ⁱ-intror e₀ le₂₁ (=all→≤ⁱ e₁ le₂₂) le₃₁ (=all→≤ⁱ e₂ le₃₂) (le .snd)
+    ite-≤ⁱ-intro2 e₀ refl le₂₁ (=all→≤ⁱ e₁ le₂₂) le₃₁ (=all→≤ⁱ e₂ le₃₂) (le .snd)
   =all→≤ⁱ {c₁} {c₂ = AnWhile inv₂ b₂ p₂ c₂ q₂}    e a =
     let (inv₁ , p₁ , a₁ , q₁ , e₀ , e₁) = strip-while-r e
         le = All²₁-∶+₁-l (ap (2 +_)
@@ -288,17 +314,55 @@ module AnInstrLeq
         (le₁₁ , le₁₂) = All²-∶∶₁-l (le .fst)
         (le₂₁ , le₂₂) = All²-∶∶₁-l le₁₂
       in
-    while-≤ⁱ-intror e₀ le₁₁ le₂₁ (=all→≤ⁱ e₁ le₂₂) (le .snd)
-
-  ≤ⁱ≃=all : ∀ {c₁ c₂} → c₁ ≤ⁱ c₂ ≃ (strip c₁ ＝ strip c₂) × All²₁ leq (annos c₁) (annos c₂)
-  ≤ⁱ≃=all = prop-extₑ ≤ⁱ-prop (×-is-of-hlevel 1 (hlevel 1)
-                                             (All²₁-is-of-hlevel 0 (λ _ _ → leq-prop)))
-                     ≤ⁱ→=all λ p → =all→≤ⁱ (p .fst) (p .snd)
+    while-≤ⁱ-intro2 e₀ refl le₁₁ le₂₁ (=all→≤ⁱ e₁ le₂₂) (le .snd)
 
   -- postcondition monotonicity
 
   mono-post : ∀ {c₁ c₂} → c₁ ≤ⁱ c₂ → leq (post c₁) (post c₂)
   mono-post = snd ∘ snd ∘ ≤ⁱ→=all
+
+module AnInstrLeqProp
+    (A : 𝒰 (ℓsuc 0ℓ))
+    (leq : A → A → 𝒰)
+    (leq-prop : ∀ {a b} → is-prop (leq a b))
+    (leq-refl : ∀ {x} → leq x x)
+    (leq-trans : ∀ {x y z} → leq x y → leq y z → leq x z)
+    (leq-antisym : ∀ {x y} → leq x y → leq y x → x ＝ y)
+  where
+
+  open List1.List1
+  open AnInstrLeq A leq
+
+  -- thinness
+
+  ≤ⁱ-prop : ∀ {c₁ c₂} → is-prop (c₁ ≤ⁱ c₂)
+  ≤ⁱ-prop (Skip-≤ⁱ le₁)                        (Skip-≤ⁱ le₂)                        =
+    ap Skip-≤ⁱ (leq-prop le₁ le₂)
+  ≤ⁱ-prop (Assign-≤ⁱ {x₁} {x₂} p₁₁ p₂₁ le₁)    (Assign-≤ⁱ p₁₂ p₂₂ le₂)              =
+      ap² (λ x y → Assign-≤ⁱ x y le₁) (is-discrete→is-set auto x₁ x₂ p₁₁ p₁₂) (hlevel 1 p₂₁ p₂₂)
+    ∙ ap (Assign-≤ⁱ p₁₂ p₂₂) (leq-prop le₁ le₂)
+  ≤ⁱ-prop (Seq-≤ⁱ le₁₁ le₂₁)                   (Seq-≤ⁱ le₁₂ le₂₂)                   =
+    ap² Seq-≤ⁱ (≤ⁱ-prop le₁₁ le₁₂) (≤ⁱ-prop le₂₁ le₂₂)
+  ≤ⁱ-prop (ITE-≤ⁱ e₁ le₁₁ le₂₁ le₃₁ le₄₁ le₅₁) (ITE-≤ⁱ e₂ le₁₂ le₂₂ le₃₂ le₄₂ le₅₂) =
+      ap² (λ x y → ITE-≤ⁱ x y le₂₁ le₃₁ le₄₁ le₅₁) (hlevel 1 e₁ e₂) (leq-prop le₁₁ le₁₂)
+    ∙ ap² (λ x y → ITE-≤ⁱ e₂ le₁₂ x y le₄₁ le₅₁) (≤ⁱ-prop le₂₁ le₂₂) (leq-prop le₃₁ le₃₂)
+    ∙ ap² (ITE-≤ⁱ e₂ le₁₂ le₂₂ le₃₂) (≤ⁱ-prop le₄₁ le₄₂) (leq-prop le₅₁ le₅₂)
+  ≤ⁱ-prop (While-≤ⁱ le₁₁ e₁ le₂₁ le₃₁ le₄₁)    (While-≤ⁱ le₁₂ e₂ le₂₂ le₃₂ le₄₂)   =
+      ap² (λ x y → While-≤ⁱ x y le₂₁ le₃₁ le₄₁) (leq-prop le₁₁ le₁₂) (hlevel 1 e₁ e₂)
+    ∙ ap² (λ x y → While-≤ⁱ le₁₂ e₂ x y le₄₁) (leq-prop le₂₁ le₂₂) (≤ⁱ-prop le₃₁ le₃₂)
+    ∙ ap (While-≤ⁱ le₁₂ e₂ le₂₂ le₃₂) (leq-prop le₄₁ le₄₂)
+
+  instance
+    H-Level-≤ⁱ : ∀ {n c₁ c₂} → ⦃ n ≥ʰ 1 ⦄ → H-Level n (c₁ ≤ⁱ c₂)
+    H-Level-≤ⁱ ⦃ s≤ʰs _ ⦄ = hlevel-basic-instance 1 ≤ⁱ-prop
+    {-# OVERLAPPING H-Level-≤ⁱ #-}
+
+  -- equivalence to strip + all2
+
+  ≤ⁱ≃=all : ∀ {c₁ c₂} → c₁ ≤ⁱ c₂ ≃ (strip c₁ ＝ strip c₂) × All²₁ leq (annos c₁) (annos c₂)
+  ≤ⁱ≃=all = prop-extₑ ≤ⁱ-prop (×-is-of-hlevel 1 (hlevel 1)
+                                             (All²₁-is-of-hlevel 0 (λ _ _ → leq-prop)))
+                     ≤ⁱ→=all λ p → =all→≤ⁱ (p .fst) (p .snd)
 
   -- partial order properties
 
