@@ -184,6 +184,15 @@ strip (AnSeq c₁ c₂)         = Seq (strip c₁) (strip c₂)
 strip (AnITE b _ c₁ _ c₂ _) = ITE b (strip c₁) (strip c₂)
 strip (AnWhile _ b _ c _)   = While b (strip c)
 
+{-
+strip-surj : ∥ A ∥₁ → is-surjective (strip {A = A})
+strip-surj ai  Skip         = map (λ a → AnSkip a , refl) ai
+strip-surj ai (Assign x e)  = map (λ a → AnAssign {!!} {!!} a , refl) ai
+strip-surj ai (Seq c₁ c₂)   = map (λ a → AnSeq {!!} {!!} , {!!}) ai
+strip-surj ai (ITE b c₁ c₂) = map (λ a → AnITE {!!} {!!} {!!} {!!} {!!} {!!} , {!!}) ai
+strip-surj ai (While b c)   = map (λ a → AnWhile {!!} {!!} {!!} {!!} {!!} , {!!}) ai
+-}
+
 strip-annotate : ∀ {f : ℕ → A} {c} → strip (annotate f c) ＝ c
 strip-annotate {c = Skip}        = refl
 strip-annotate {c = Assign x e}  = refl
@@ -285,6 +294,145 @@ strip-annos-same {a = AnWhile inv₁ b₁ p₁ a₁ q₁} {b = AnWhile inv₂ b�
   ∙ ap² (λ x y → AnWhile inv₂ b₂ x y q₁) (h4 .fst) (strip-annos-same (h .snd) (h4 .snd))
   ∙ ap (AnWhile inv₂ b₂ p₂ a₂) (h2 .snd)
 
+-- subtype of structurally equal annotated commands
+
+strip-skip : ∀ {c} → strip c ＝ Skip → Σ[ p ꞉ A ] (c ＝ AnSkip p)
+strip-skip {c = AnSkip p}              eq = p , refl
+strip-skip {c = AnAssign x e p}        eq = absurd (Skip≠Assign (eq ⁻¹))
+strip-skip {c = AnSeq c₁ c₂}           eq = absurd (Skip≠Seq (eq ⁻¹))
+strip-skip {c = AnITE b p₁ c₁ p₂ c₂ q} eq = absurd (Skip≠ITE (eq ⁻¹))
+strip-skip {c = AnWhile inv b p c q}   eq = absurd (Skip≠While (eq ⁻¹))
+
+strip-assign : ∀ {x e c} → strip c ＝ Assign x e → Σ[ p ꞉ A ] (c ＝ AnAssign x e p)
+strip-assign {c = AnSkip p}              eq = absurd (Skip≠Assign eq)
+strip-assign {c = AnAssign x e p}        eq =
+  let (eqx , eqe) = Assign-inj eq in
+  p , ap² (λ z₁ z₂ → AnAssign z₁ z₂ p) eqx eqe
+strip-assign {c = AnSeq c₁ c₂}           eq = absurd (Assign≠Seq (eq ⁻¹))
+strip-assign {c = AnITE b p₁ c₁ p₂ c₂ q} eq = absurd (Assign≠ITE (eq ⁻¹))
+strip-assign {c = AnWhile inv b p c q}   eq = absurd (Assign≠While (eq ⁻¹))
+
+strip-seq : ∀ {A : 𝒰 ℓ} {c₁ c₂ c}
+          → strip c ＝ Seq c₁ c₂
+          → Σ[ a₁ ꞉ AnInstr A ] Σ[ a₂ ꞉ AnInstr A ]
+               (c ＝ AnSeq a₁ a₂)
+             × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂)
+strip-seq {c = AnSkip p}              eq = absurd (Skip≠Seq eq)
+strip-seq {c = AnAssign x e p}        eq = absurd (Assign≠Seq eq)
+strip-seq {c = AnSeq c₁ c₂}           eq =
+  let (eq₁ , eq₂) = Seq-inj eq in
+  c₁ , c₂ , refl , eq₁ , eq₂
+strip-seq {c = AnITE b p₁ c₁ p₂ c₂ q} eq = absurd (Seq≠ITE (eq ⁻¹))
+strip-seq {c = AnWhile inv b p c q}   eq = absurd (Seq≠While (eq ⁻¹))
+
+strip-ite : ∀ {A : 𝒰 ℓ} {b c₁ c₂ c}
+          → strip c ＝ ITE b c₁ c₂
+          → Σ[ p₁ ꞉ A ] Σ[ a₁ ꞉ AnInstr A ] Σ[ p₂ ꞉ A ] Σ[ a₂ ꞉ AnInstr A ] Σ[ q ꞉ A ]
+                 (c ＝ AnITE b p₁ a₁ p₂ a₂ q)
+               × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂)
+strip-ite {c = AnSkip p}               eq = absurd (Skip≠ITE eq)
+strip-ite {c = AnAssign x e p}         eq = absurd (Assign≠ITE eq)
+strip-ite {c = AnSeq c₁ c₂}            eq = absurd (Seq≠ITE eq)
+strip-ite {c = AnITE b₀ p₁ c₁ p₂ c₂ q} eq =
+  let (eq₀ , eq₁ , eq₂) = ITE-inj eq in
+  p₁ , c₁ , p₂ , c₂ , q , ap (λ z → AnITE z p₁ c₁ p₂ c₂ q) eq₀ , eq₁ , eq₂
+strip-ite {c = AnWhile inv b p c q}    eq = absurd (ITE≠While (eq ⁻¹))
+
+strip-while : ∀ {A : 𝒰 ℓ} {b c₀ c}
+            → strip c ＝ While b c₀
+            → Σ[ inv ꞉ A ] Σ[ p ꞉ A ] Σ[ a ꞉ AnInstr A ] Σ[ q ꞉ A ]
+                 (c ＝ AnWhile inv b p a q) × (strip a ＝ c₀)
+strip-while {c = AnSkip p}               eq = absurd (Skip≠While eq)
+strip-while {c = AnAssign x e p}         eq = absurd (Assign≠While eq)
+strip-while {c = AnSeq c₁ c₂}            eq = absurd (Seq≠While eq)
+strip-while {c = AnITE b₀ p₁ c₁ p₂ c₂ q} eq = absurd (ITE≠While eq)
+strip-while {c = AnWhile inv b p c q}    eq =
+  let (eq₀ , eq₁) = While-inj eq in
+  inv , p , c , q , ap (λ z → AnWhile inv z p c q) eq₀ , eq₁
+
+AnStr : 𝒰 ℓ → Instr → 𝒰 ℓ
+AnStr A c = fibre (strip {A = A}) c
+
+AnStr-Skip-≃ : {A : 𝒰 ℓ} → AnStr A Skip ≃ A
+AnStr-Skip-≃ {A} = ≅→≃ (to , iso fro ri li)
+  where
+  to : AnStr A Skip → A
+  to (as , eq) = strip-skip eq .fst
+  fro : A → AnStr A Skip
+  fro a = AnSkip a , refl
+  ri : fro is-right-inverse-of to
+  ri a = refl
+  li : fro is-left-inverse-of to
+  li (as , eq) = Σ-prop-path! (strip-skip eq .snd ⁻¹)
+
+AnStr-Assign-≃ : ∀ {x e} {A : 𝒰 ℓ} → AnStr A (Assign x e) ≃ A
+AnStr-Assign-≃ {x} {e} {A} = ≅→≃ (to , iso fro ri li)
+  where
+  to : AnStr A (Assign x e) → A
+  to (as , eq) = strip-assign eq .fst
+  fro : A → AnStr A (Assign x e)
+  fro a = AnAssign x e a , refl
+  ri : fro is-right-inverse-of to
+  ri a = refl
+  li : fro is-left-inverse-of to
+  li (as , eq) = Σ-prop-path! (strip-assign eq .snd ⁻¹)
+
+AnStr-Seq-≃ : ∀ {c₁ c₂} {A : 𝒰 ℓ} → AnStr A (Seq c₁ c₂) ≃ AnStr A c₁ × AnStr A c₂
+AnStr-Seq-≃ {c₁} {c₂} {A} = ≅→≃ (to , iso fro ri li)
+  where
+  to : AnStr A (Seq c₁ c₂) → AnStr A c₁ × AnStr A c₂
+  to (as , eq) =
+    let (a₁ , a₂ , _ , e₁ , e₂) = strip-seq eq in
+    (a₁ , e₁) , (a₂ , e₂)
+  fro : AnStr A c₁ × AnStr A c₂ → AnStr A (Seq c₁ c₂)
+  fro ((a₁ , e₁) , (a₂ , e₂)) = AnSeq a₁ a₂ , ap² Seq e₁ e₂
+  ri : fro is-right-inverse-of to
+  ri ((a₁ , e₁) , (a₂ , e₂)) = ×-path (Σ-prop-path! refl) (Σ-prop-path! refl)
+  li : fro is-left-inverse-of to
+  li (as , eq) =
+    let (a₁ , a₂ , p , e₁ , e₂) = strip-seq eq in
+    Σ-prop-path! (p ⁻¹)
+
+AnStr-ITE-≃ : ∀ {b c₁ c₂} {A : 𝒰 ℓ} → AnStr A (ITE b c₁ c₂) ≃ A × AnStr A c₁ × A × AnStr A c₂ × A
+AnStr-ITE-≃ {b} {c₁} {c₂} {A} = ≅→≃ (to , iso fro ri li)
+  where
+  to : AnStr A (ITE b c₁ c₂) → A × AnStr A c₁ × A × AnStr A c₂ × A
+  to (as , eq) =
+    let (p₁ , a₁ , p₂ , a₂ , q , _ , e₁ , e₂) = strip-ite eq in
+    p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q
+  fro : A × AnStr A c₁ × A × AnStr A c₂ × A → AnStr A (ITE b c₁ c₂)
+  fro (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) = AnITE b p₁ a₁ p₂ a₂ q , ap² (ITE b) e₁ e₂
+  ri : fro is-right-inverse-of to
+  ri (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) =
+    ×-path refl $
+    ×-path (Σ-prop-path! refl) $
+    ×-path refl $
+    ×-path (Σ-prop-path! refl) refl
+  li : fro is-left-inverse-of to
+  li (as , eq) =
+    let (p₁ , a₁ , p₂ , a₂ , q , e₀ , e₁ , e₂) = strip-ite eq in
+    Σ-prop-path! (e₀ ⁻¹)
+
+AnStr-While-≃ : ∀ {b c} {A : 𝒰 ℓ} → AnStr A (While b c) ≃ A × A × AnStr A c × A
+AnStr-While-≃ {b} {c} {A} = ≅→≃ (to , iso fro ri li)
+  where
+  to : AnStr A (While b c) → A × A × AnStr A c × A
+  to (as , eq) =
+    let (inv , p , a , q , _ , e) = strip-while eq in
+    inv , p , (a , e) , q
+  fro : A × A × AnStr A c × A → AnStr A (While b c)
+  fro (inv , p , (a , e) , q) = AnWhile inv b p a q , ap (While b) e
+  ri : fro is-right-inverse-of to
+  ri (inv , p , (a , e) , q) =
+    ×-path refl $
+    ×-path refl $
+    ×-path (Σ-prop-path! refl) refl
+  li : fro is-left-inverse-of to
+  li (as , eq) =
+    let (inv , p , a , q , e₀ , e) = strip-while eq in
+    Σ-prop-path! (e₀ ⁻¹)
+
+{-
 -- case reflection
 
 opaque
@@ -398,8 +546,4 @@ opaque
   strip-while-r {b} {c₀} {c} eq =
     true-reflects (reflects-strip-while c) $
     reflects-true (reflects-instr (While b c₀) (strip c)) (eq ⁻¹)
-
--- subtype of structurally equal annotated commands
-
-AnStr : 𝒰 ℓ → Instr → 𝒰 ℓ
-AnStr A c = fibre (strip {A = A}) c
+-}

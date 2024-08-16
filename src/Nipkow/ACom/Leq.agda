@@ -274,17 +274,17 @@ module AnInstrLeq
 
   =all→≤ⁱ : ∀ {c₁ c₂} → strip c₁ ＝ strip c₂ → All²₁ leq (annos c₁) (annos c₂) → c₁ ≤ⁱ c₂
   =all→≤ⁱ {c₁} {c₂ = AnSkip a₂}                   e a =
-    let (a₁ , e₁) = strip-skip-r e
+    let (a₁ , e₁) = strip-skip e
         (_ , le) = subst (λ x → All²₁ leq (annos x) [ a₂ ]₁) e₁ a
       in
     skip-≤ⁱ-intro2 e₁ refl le
   =all→≤ⁱ {c₁} {c₂ = AnAssign x₂ e₂ a₂}           e a =
-    let (a₁ , e₁) = strip-assign-r e
+    let (a₁ , e₁) = strip-assign e
         (_ , le) = subst (λ x → All²₁ leq (annos x) [ a₂ ]₁) e₁ a
       in
     assign-≤ⁱ-intro2 e₁ refl le
   =all→≤ⁱ {c₁} {c₂ = AnSeq c₁₂ c₂₂}               e a =
-    let (a₁ , a₂ , e₁ , e₂ , e₃) = strip-seq-r e
+    let (a₁ , a₂ , e₁ , e₂ , e₃) = strip-seq e
         (le₁ , le₂) = All²₁-split
                         (length-annos-same {c₁ = a₁}
                            (reflects-true (reflects-instr (strip a₁) (strip c₁₂)) e₂))
@@ -292,7 +292,7 @@ module AnInstrLeq
       in
     seq-≤ⁱ-intro2 e₁ refl (=all→≤ⁱ e₂ le₁) (=all→≤ⁱ e₃ le₂)
   =all→≤ⁱ {c₁} {c₂ = AnITE b₂ p₁₂ c₁₂ p₂₂ c₂₂ q₂} e a =
-    let (p₃ , a₁ , p₄ , a₂ , q , e₀ , e₁ , e₂) = strip-ite-r e
+    let (p₃ , a₁ , p₄ , a₂ , q , e₀ , e₁ , e₂) = strip-ite e
         lp₁ = length-annos-same {c₁ = a₁} $ reflects-true (reflects-instr (strip a₁) (strip c₁₂)) e₁
         le = All²₁-∶+₁-l (  length₁-++ {xs = p₃ ∷₁ annos a₁} {ys = p₄ ∷₁ annos a₂}
                          ∙ ap² (λ x y → suc x + suc y) lp₁
@@ -306,7 +306,7 @@ module AnInstrLeq
       in
     ite-≤ⁱ-intro2 e₀ refl le₂₁ (=all→≤ⁱ e₁ le₂₂) le₃₁ (=all→≤ⁱ e₂ le₃₂) (le .snd)
   =all→≤ⁱ {c₁} {c₂ = AnWhile inv₂ b₂ p₂ c₂ q₂}    e a =
-    let (inv₁ , p₁ , a₁ , q₁ , e₀ , e₁) = strip-while-r e
+    let (inv₁ , p₁ , a₁ , q₁ , e₀ , e₁) = strip-while e
         le = All²₁-∶+₁-l (ap (2 +_)
                             (length-annos-same {c₁ = a₁}
                               (reflects-true (reflects-instr (strip a₁) (strip c₂)) e₁))) $

@@ -21,6 +21,7 @@ open import Data.Reflects
 open import Combinatorics.Power
 open import Order.Base
 open import Order.Diagram.Lub
+open import Order.Constructions.Product
 open import Order.SupLattice
 open import Order.SupLattice.SmallBasis
 open import Order.SupLattice.SmallPresentation
@@ -64,147 +65,47 @@ module AnInstrOrd {B : 𝒰}
   anc-poset c .Poset.≤-trans               = ≤ⁱ-trans
   anc-poset c .Poset.≤-antisym xy yx       = Σ-prop-path! (≤ⁱ-antisym xy yx)
 
-  anc-sup : ∀ (c : Instr) → {I : 𝒰} → (I → AnStr Ob c) → AnStr Ob c
-  anc-sup  Skip         {I} F =
-    AnSkip (⋃ λ i → let (a , e) = strip-skip-r (F i .snd) in a) , refl
-  anc-sup (Assign x e)  F =
-    AnAssign x e (⋃ λ i → let (a , e) = strip-assign-r (F i .snd) in a) , refl
-  anc-sup (Seq c₁ c₂)   F =
-    let (a₁ , e₁) = anc-sup c₁ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₁ , e₁
-        (a₂ , e₂) = anc-sup c₂ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₂ , e₂
-     in
-    AnSeq a₁ a₂ , ap² Seq e₁ e₂
-  anc-sup (ITE b c₁ c₂) F =
-    let (a₁ , e₁) = anc-sup c₁ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₁ , e₁
-        (a₂ , e₂) = anc-sup c₂ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₂ , e₂
-     in
-   AnITE b
-     (⋃ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₁)
-     a₁
-     (⋃ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₂)
-     a₂
-     (⋃ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in q)
-   , ap² (ITE b) e₁ e₂
-  anc-sup (While b c)   F =
-    let (a , e) = anc-sup c λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in a , e
-     in
-    AnWhile (⋃ λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in inv)
-            b
-            (⋃ λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in p)
-            a
-            (⋃ λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in q)
-    , ap (While b) e
-
   anc-lub : ∀ c {I : 𝒰} (F : I → AnStr Ob c)
-          → is-lub (anc-poset c)
-                   F (anc-sup c F)
+          → Lub (anc-poset c) F
   anc-lub  Skip             F =
-    let sa = lubs (λ j → let (a , _) = strip-skip-r (F j .snd) in a) .Lub.has-lub in
-    record {
-      fam≤lub = λ i →
-                  let (af , ef) = strip-skip-r (F i .snd) in
-                  skip-≤ⁱ-intro2 ef refl $
-                  sa .fam≤lub i
-    ; least = λ where (a' , eq) f →
-                         let (a1 , eq1) = strip-skip-r eq in
-                         skip-≤ⁱ-intro2 refl eq1 $
-                         sa .least a1 λ i →
-                                        let (af , ef) = strip-skip-r (F i .snd) in
-                                        skip-≤ⁱ-elim2 ef eq1 (f i)
-    }
+    let l = lubs (λ j → let (a , _) = strip-skip (F j .snd) in a) in
+    ≃→Lub′ (AnStr-Skip-≃ ⁻¹)
+      Skip-≤ⁱ skip-≤ⁱ-elim
+      l
   anc-lub (Assign x e)      F =
-    let sa = lubs (λ j → let (a , e) = strip-assign-r (F j .snd) in a) .Lub.has-lub in
-    record {
-      fam≤lub = λ i →
-                  let (af , ef) = strip-assign-r (F i .snd) in
-                  assign-≤ⁱ-intro2 ef refl $
-                  sa .fam≤lub i
-    ; least = λ where (a' , eq) f →
-                         let (a1 , eq1) = strip-assign-r eq in
-                         assign-≤ⁱ-intro2 refl eq1 $
-                         sa .least a1 λ i →
-                                        let (af , ef) = strip-assign-r (F i .snd) in
-                                        assign-≤ⁱ-elim2 ef eq1 (f i)
-    }
-
-  anc-lub (Seq c₁ c₂)   {I} F =
-    let ih₁ = anc-lub c₁ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₁ , e₁
-        ih₂ = anc-lub c₂ λ i → let (a₁ , a₂ , eq , e₁ , e₂) = strip-seq-r (F i .snd) in a₂ , e₂
-     in
-    record {
-      fam≤lub = λ i →
-                  let (_ , _ , eq' , _ , _) = strip-seq-r (F i .snd) in
-                  seq-≤ⁱ-intro2 eq' refl
-                    (ih₁ .fam≤lub i) (ih₂ .fam≤lub i)
-    ; least = λ where (a' , eq) f →
-                          let (a1 , a2 , eq0 , eq1 , eq2) = strip-seq-r eq
-                              f2 : (i : I) → (strip-seq-r (F i .snd) .fst ≤ⁱ a1) × (strip-seq-r (F i .snd) .snd .fst ≤ⁱ a2)
-                              f2 i = let (_ , _ , ef , _ , _) = strip-seq-r (F i .snd) in
-                                     seq-≤ⁱ-elim2 ef eq0 (f i)
-                            in
-                          seq-≤ⁱ-intro2 refl eq0
-                            (ih₁ .least (a1 , eq1) (fst ∘ f2))
-                            (ih₂ .least (a2 , eq2) (snd ∘ f2))
-    }
+    let l = lubs (λ j → let (a , _) = strip-assign (F j .snd) in a) in
+    ≃→Lub′ (AnStr-Assign-≃ ⁻¹)
+      (Assign-≤ⁱ refl refl) assign-≤ⁱ-elim
+      l
+  anc-lub (Seq c₁ c₂)       F =
+    let ih₁ = anc-lub c₁ λ i → let (a₁ , _ , _ , e₁ , _) = strip-seq (F i .snd) in a₁ , e₁
+        ih₂ = anc-lub c₂ λ i → let (_ , a₂ , _ , _ , e₂) = strip-seq (F i .snd) in a₂ , e₂
+      in
+    ≃→Lub′ (AnStr-Seq-≃ ⁻¹)
+      (λ where (le₁ , le₂) → Seq-≤ⁱ le₁ le₂) seq-≤ⁱ-elim
+      (ih₁ × ih₂)
   anc-lub (ITE b c₁ c₂) {I} F =
-    let sp₁ = lubs      (λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₁) .Lub.has-lub
-        ih₁ = anc-lub c₁ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₁ , e₁
-        sp₂ = lubs      (λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in p₂) .Lub.has-lub
-        ih₂ = anc-lub c₂ λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in a₂ , e₂
-        sq  = lubs      (λ i → let (p₁ , a₁ , p₂ , a₂ , q , eq , e₁ , e₂) = strip-ite-r (F i .snd) in q) .Lub.has-lub
+    let lp₁ = lubs      (λ i → let (p₁ , _  , _  , _  , _ , _ , _  , _ ) = strip-ite (F i .snd) in p₁)
+        ih₁ = anc-lub c₁ λ i → let (_  , a₁ , _  , _  , _ , _ , e₁ , _ ) = strip-ite (F i .snd) in a₁ , e₁
+        lp₂ = lubs      (λ i → let (_  , _  , p₂ , _  , _ , _ , _  , _ ) = strip-ite (F i .snd) in p₂)
+        ih₂ = anc-lub c₂ λ i → let (_  , _  , _  , a₂ , _ , _ , _  , e₂) = strip-ite (F i .snd) in a₂ , e₂
+        lq  = lubs      (λ i → let (_  , _  , _  , _  , q , _ , _  , _ ) = strip-ite (F i .snd) in q)
       in
-    record {
-      fam≤lub = λ i →
-                  let (_ , _ , _ , _ , _ , eq' , _ , _) = strip-ite-r (F i .snd) in
-                  ite-≤ⁱ-intro2 eq' refl
-                    (sp₁ .fam≤lub i) (ih₁ .fam≤lub i) (sp₂ .fam≤lub i) (ih₂ .fam≤lub i) (sq .fam≤lub i)
-    ; least = λ where (a' , eq) f →
-                          let (p1 , a1 , p2 , a2 , q0 , eq0 , e1 , e2) = strip-ite-r eq
-                              f2 : (i : I) → (strip-ite-r (F i .snd) .fst ≤ p1)
-                                           × (strip-ite-r (F i .snd) .snd .fst ≤ⁱ a1)
-                                           × (strip-ite-r (F i .snd) .snd .snd .fst ≤ p2)
-                                           × (strip-ite-r (F i .snd) .snd .snd .snd .fst ≤ⁱ a2)
-                                           × (strip-ite-r (F i .snd) .snd .snd .snd .snd .fst ≤ q0)
-                              f2 i = let (_ , _ , _ , _ , _ , ef , _ , _) = strip-ite-r (F i .snd) in
-                                     ite-≤ⁱ-elim2 ef eq0 (f i)
-                            in
-                          ite-≤ⁱ-intro2 refl eq0
-                            (sp₁ .least  p1       (fst ∘ f2))
-                            (ih₁ .least (a1 , e1) (fst ∘ snd ∘ f2))
-                            (sp₂ .least  p2       (fst ∘ snd ∘ snd ∘ f2))
-                            (ih₂ .least (a2 , e2) (fst ∘ snd ∘ snd ∘ snd ∘ f2))
-                            (sq  .least  q0       (snd ∘ snd ∘ snd ∘ snd ∘ f2))
-    }
+    ≃→Lub′ {P = P ×ₚ (anc-poset c₁ ×ₚ (P ×ₚ (anc-poset c₂ ×ₚ P)))} (AnStr-ITE-≃ ⁻¹)
+      (λ where (le₁ , le₂ , le₃ , le₄ , le₅) → ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅) ite-≤ⁱ-elim
+      (lp₁ × ih₁ × lp₂ × ih₂ × lq)
   anc-lub (While b c)   {I} F =
-    let sinv = lubs     (λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in inv) .Lub.has-lub
-        sp   = lubs     (λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in p) .Lub.has-lub
-        ih   = anc-lub c λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in a , e
-        sq   = lubs     (λ i → let (inv , p , a , q , eq , e) = strip-while-r (F i .snd) in q) .Lub.has-lub
+    let linv = lubs     (λ i → let (inv , _ , _ , _ , _  , _) = strip-while (F i .snd) in inv)
+        lp   = lubs     (λ i → let (_   , p , _ , _ , _  , _) = strip-while (F i .snd) in p)
+        ih   = anc-lub c λ i → let (_   , _ , a , _ , _  , e) = strip-while (F i .snd) in a , e
+        lq   = lubs     (λ i → let (_   , _ , _ , q , _  , _) = strip-while (F i .snd) in q)
       in
-    record {
-      fam≤lub = λ i →
-                  let (_ , _ , _ , _ , eq' , _) = strip-while-r (F i .snd) in
-                  while-≤ⁱ-intro2 eq' refl
-                    (sinv .fam≤lub i) (sp .fam≤lub i) (ih .fam≤lub i) (sq .fam≤lub i)
-    ; least = λ where (a' , eq) f →
-                        let (inv1 , p1 , a1 , q1 , eq0 , e1) = strip-while-r eq
-                            f2 : (i : I) → (strip-while-r (F i .snd) .fst ≤ inv1)
-                                         × (strip-while-r (F i .snd) .snd .fst ≤ p1)
-                                         × (strip-while-r (F i .snd) .snd .snd .fst ≤ⁱ a1)
-                                         × (strip-while-r (F i .snd) .snd .snd .snd .fst ≤ q1)
-                            f2 i = let (_ , _ , _ , _ , ef , _) = strip-while-r (F i .snd) in
-                                   while-≤ⁱ-elim2 ef eq0 (f i)
-                          in
-                        while-≤ⁱ-intro2 refl eq0
-                          (sinv .least  inv1     (fst ∘ f2))
-                          (sp   .least  p1       (fst ∘ snd ∘ f2))
-                          (ih   .least (a1 , e1) (fst ∘ snd ∘ snd ∘ f2))
-                          (sq   .least  q1       (snd ∘ snd ∘ snd ∘ f2))
-    }
+    ≃→Lub′ {P = P ×ₚ (P ×ₚ (anc-poset c ×ₚ P))} (AnStr-While-≃ ⁻¹)
+      (λ where (le₁ , le₂ , le₃ , le₄) → While-≤ⁱ le₁ refl le₂ le₃ le₄) while-≤ⁱ-elim
+      (linv × lp × ih × lq)
 
   anc-suplat : (c : Instr) → is-sup-lattice (anc-poset c) 0ℓ
-  anc-suplat c .is-sup-lattice.has-lubs {F} .Lub.lub = anc-sup c F
-  anc-suplat c .is-sup-lattice.has-lubs {F} .Lub.has-lub = anc-lub c F
+  anc-suplat c .is-sup-lattice.has-lubs {F} = anc-lub c F
 
   -- small basis via annotation
 
@@ -264,29 +165,29 @@ module AnInstrOrd {B : 𝒰}
   anc-↓-is-sup : (c : Instr) (x : AnStr Ob c) → is-lub (anc-poset c)
                                                        (↓ᴮ-inclusion (anc-poset c) (anc-suplat c) (anc-β c) x) x
   anc-↓-is-sup Skip (a , e) =
-    let (o' , e') = strip-skip-r e in
+    let (o' , e') = strip-skip e in
     record {
       fam≤lub = λ where (bf , le) → le
     ; least = λ where (a'' , e'') f →
-                        let (oo , eo) = strip-skip-r e'' in
+                        let (oo , eo) = strip-skip e'' in
                         skip-≤ⁱ-intro2 e' eo $
                         ↓-is-sup o' .least oo λ where (b , le) →
                                                         skip-≤ⁱ-elim2 refl eo $
                                                         f (single-at b 0 , skip-≤ⁱ-intro2 refl e' le)
     }
   anc-↓-is-sup (Assign x e) (a , eq) =
-    let (o' , eq') = strip-assign-r eq in
+    let (o' , eq') = strip-assign eq in
     record {
       fam≤lub = λ where (bf , le) → le
     ; least = λ where (a'' , eq'') f →
-                        let (oo , eo) = strip-assign-r eq'' in
+                        let (oo , eo) = strip-assign eq'' in
                         assign-≤ⁱ-intro2 eq' eo $
                         ↓-is-sup o' .least oo λ where (b , le) →
                                                          assign-≤ⁱ-elim2 refl eo $
                                                          f (single-at b 0 , assign-≤ⁱ-intro2 refl eq' le)
     }
   anc-↓-is-sup (Seq c₁ c₂) (a , eq) =
-    let (a₁ , a₂ , eq₀ , e₁ , e₂) = strip-seq-r eq
+    let (a₁ , a₂ , eq₀ , e₁ , e₂) = strip-seq eq
         ih₁ = anc-↓-is-sup c₁ (a₁ , e₁)
         ih₂ = anc-↓-is-sup c₂ (a₂ , e₂)
       in
@@ -297,7 +198,7 @@ module AnInstrOrd {B : 𝒰}
                              (ih₁ .fam≤lub (bf , le1))
                              (ih₂ .fam≤lub (shl bf (asize c₁) , le2))
     ; least = λ where (a'' , eq'') f →
-                        let (a₁' , a₂' , eq₀' , e₁' , e₂') = strip-seq-r eq'' in
+                        let (a₁' , a₂' , eq₀' , e₁' , e₂') = strip-seq eq'' in
                         seq-≤ⁱ-intro2 eq₀ eq₀'
                           (ih₁ .least (a₁' , e₁')
                              λ where (bf , le) →
@@ -331,7 +232,7 @@ module AnInstrOrd {B : 𝒰}
                                             .snd))
     }
   anc-↓-is-sup (ITE b c₁ c₂) (a , eq) =
-    let (p₁ , a₁ , p₂ , a₂ , q , eq₀ , e₁ , e₂) = strip-ite-r eq
+    let (p₁ , a₁ , p₂ , a₂ , q , eq₀ , e₁ , e₂) = strip-ite eq
         ih₁ = anc-↓-is-sup c₁ (a₁ , e₁)
         ih₂ = anc-↓-is-sup c₂ (a₂ , e₂)
      in
@@ -344,7 +245,7 @@ module AnInstrOrd {B : 𝒰}
                             (ih₂ .fam≤lub (shl bf (2 + asize c₁) , le4))
                             le5
     ; least = λ where (a'' , eq'') f →
-                        let (p₁' , a₁' , p₂' , a₂' , q' , eq₀' , e₁' , e₂') = strip-ite-r eq'' in
+                        let (p₁' , a₁' , p₂' , a₂' , q' , eq₀' , e₁' , e₂') = strip-ite eq'' in
                         ite-≤ⁱ-intro2 eq₀ eq₀'
                           (↓-is-sup p₁ .least p₁'
                              λ where (b' , le) →
@@ -465,7 +366,7 @@ module AnInstrOrd {B : 𝒰}
                                           .snd .snd .snd .snd)
     }
   anc-↓-is-sup (While b c) (a , eq) =
-    let (inv₀ , p₀ , a₀ , q₀ , eq₀ , e₀) = strip-while-r eq
+    let (inv₀ , p₀ , a₀ , q₀ , eq₀ , e₀) = strip-while eq
         ih = anc-↓-is-sup c (a₀ , e₀)
       in
     record {
@@ -475,7 +376,7 @@ module AnInstrOrd {B : 𝒰}
                              (ih .fam≤lub (shl bf 2 , le3))
                              le4
     ; least = λ where (a'' , eq'') f →
-                        let (inv₀' , p₀' , a₀' , q₀' , eq₀' , e₀') = strip-while-r eq'' in
+                        let (inv₀' , p₀' , a₀' , q₀' , eq₀' , e₀') = strip-while eq'' in
                         while-≤ⁱ-intro2 eq₀ eq₀'
                           (↓-is-sup inv₀ .least inv₀'
                              λ where (b' , le) →

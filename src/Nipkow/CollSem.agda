@@ -120,17 +120,17 @@ big-step-post-step : ∀ {s s' i a ss}
                    → step ss a ≤ⁱ a
                    → s' ∈ post a
 big-step-post-step {s} .{s' = s}    .{i = Skip}        {a} {ss}  ExSkip                                 seq sin stleq =
-  let (p , eq) = strip-skip-r seq
+  let (p , eq) = strip-skip seq
       le = skip-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
    in
   subst (λ q → s ∈ post q) (eq ⁻¹) (le sin)
 big-step-post-step {s}  {s'}        .{i = Assign x e}  {a} {ss} (ExAssign {x} {e} upd)                  seq sin stleq =
-  let (p , eq) = strip-assign-r seq
+  let (p , eq) = strip-assign seq
       le = assign-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
     in
   subst (λ q → s' ∈ post q) (eq ⁻¹) (le ∣ (s , upd , sin) ∣₁)
 big-step-post-step {s}  {s'}        .{i = Seq i₁ i₂}   {a} {ss} (ExSeq {i₁} {i₂} ex₁ ex₂)               seq sin stleq =
-  let (a₁ , a₂ , eq , eq₁ , eq₂) = strip-seq-r seq
+  let (a₁ , a₂ , eq , eq₁ , eq₂) = strip-seq seq
       (le1 , le2) = seq-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
     in
   subst (λ q → s' ∈ post q) (eq ⁻¹) $
@@ -138,21 +138,21 @@ big-step-post-step {s}  {s'}        .{i = Seq i₁ i₂}   {a} {ss} (ExSeq {i₁
     (big-step-post-step {a = a₁} ex₁ eq₁ sin le1)
     le2
 big-step-post-step {s}  {s'}        .{i = ITE b i₁ i₂} {a} {ss} (ExITET {b} {i₁} {i₂} bt ex)            seq sin stleq =
-  let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r seq
+  let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite seq
       (le1 , le2 , _ , _ , le5) = ite-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
     in
   subst (λ q → s' ∈ post q) (eq ⁻¹) $
   le5 $
   ∣ inl (big-step-post-step {a = a₁} {ss = p₁} ex eq₁ (le1 (bt , sin)) le2) ∣₁
 big-step-post-step {s}  {s'}        .{i = ITE b i₁ i₂} {a} {ss} (ExITEF {b} {i₁} {i₂} bf ex)            seq sin stleq =
-  let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite-r seq
+  let (p₁ , a₁ , p₂ , a₂ , q , eq , eq₁ , eq₂) = strip-ite seq
       (_ , _ , le3 , le4 , le5) = ite-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
     in
   subst (λ q → s' ∈ post q) (eq ⁻¹) $
   le5 $
   ∣ inr (big-step-post-step {a = a₂} {ss = p₂} ex eq₂ (le3 (bf , sin)) le4) ∣₁
 big-step-post-step {s}  .{s' = s''} .{i = While b i}  {a} {ss} (ExWhileT {s'} {s''} {b} {i} bt ex₁ ex₂) seq sin stleq =
-  let (inv , p , a₀ , q , eq , eq₁) = strip-while-r seq
+  let (inv , p , a₀ , q , eq , eq₁) = strip-while seq
       (le1 , le2 , le3 , le4) = while-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
     in
   subst (λ q → s'' ∈ post q) (eq ⁻¹) $
@@ -160,7 +160,7 @@ big-step-post-step {s}  .{s' = s''} .{i = While b i}  {a} {ss} (ExWhileT {s'} {s
     (big-step-post-step {s' = s'} {a = a₀} {ss = p} ex₁ eq₁ (le2 (bt , le1 ∣ inl sin ∣₁)) le3)
     (While-≤ⁱ (le1 ∘ map [ inr , inr ]ᵤ) refl le2 le3 le4)
 big-step-post-step {s}  {s'}        .{i = While b i}  {a} {ss} (ExWhileF {b} {i} bf)                    seq sin stleq =
-  let (inv , p , a₀ , q , eq , eq₁) = strip-while-r seq
+  let (inv , p , a₀ , q , eq , eq₁) = strip-while seq
       (le1 , _ , _ , le4) = while-≤ⁱ-elim2 (ap (step ss) eq) eq stleq
     in
   subst (λ q → s' ∈ post q) (eq ⁻¹) $
