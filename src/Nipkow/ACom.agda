@@ -1,9 +1,8 @@
 module Nipkow.ACom where
 
 open import Prelude
-open import Data.Empty
-open import Data.Bool renaming (_==_ to _==ᵇ_ ; ==-reflects to ==ᵇ-reflects)
-open import Data.Nat renaming (_==_ to _==ⁿ_ ; ==-reflects to ==ⁿ-reflects)
+open import Data.Bool
+open import Data.Nat renaming (_==_ to _==ⁿ_)
 open import Data.Nat.Order.Base renaming (_≤_ to _≤ⁿ_ ; _<_ to _<ⁿ_)
 open import Data.String
 open import Data.Maybe renaming (rec to recᵐ ; elim to elimᵐ)
@@ -231,121 +230,132 @@ annos-annotate-const {a} {c = While b c}   = ap (_∶+₁ a)
                                               ∙ replicate₁-∷₁ z<s ⁻¹)
                                              ∙ replicate₁-∶+₁ z<s ⁻¹
 
-length-annos-same : ∀ {c₁ c₂ : AnInstr A}
-                  → is-true (strip c₁ ==ⁱ strip c₂)
+length-annos-sameᵇ : ∀ {c₁ c₂ : AnInstr A}
+                  → ⌞ strip c₁ ==ⁱ strip c₂ ⌟
                   → length₁ (annos c₁) ＝ length₁ (annos c₂)
-length-annos-same {c₁ = AnSkip p₁}                {c₂ = AnSkip p₂}                eq = refl
-length-annos-same {c₁ = AnAssign x₁ e₁ p₁}        {c₂ = AnAssign x₂ e₂ p₂}        eq = refl
-length-annos-same {c₁ = AnSeq c₁ c₂}              {c₂ = AnSeq c₃ c₄}              eq =
-  let h12 = and-true-≃ {x = strip c₁ ==ⁱ strip c₃} {y = strip c₂ ==ⁱ strip c₄} $ eq in
+length-annos-sameᵇ {c₁ = AnSkip p₁}                {c₂ = AnSkip p₂}                eq = refl
+length-annos-sameᵇ {c₁ = AnAssign x₁ e₁ p₁}        {c₂ = AnAssign x₂ e₂ p₂}        eq = refl
+length-annos-sameᵇ {c₁ = AnSeq c₁ c₂}              {c₂ = AnSeq c₃ c₄}              eq =
+  let h12 = and-so-≃ {x = strip c₁ ==ⁱ strip c₃} {y = strip c₂ ==ⁱ strip c₄} $ eq in
     length₁-++ {xs = annos c₁} {ys = annos c₂}
-  ∙ ap² _+_ (length-annos-same {c₁ = c₁} (h12 .fst))
-            (length-annos-same {c₁ = c₂} (h12 .snd))
+  ∙ ap² _+_ (length-annos-sameᵇ {c₁ = c₁} (h12 .fst))
+            (length-annos-sameᵇ {c₁ = c₂} (h12 .snd))
   ∙ length₁-++ {xs = annos c₃} {ys = annos c₄} ⁻¹
-length-annos-same {c₁ = AnITE b₁ p₁ c₁ p₂ c₂ q₁}  {c₂ = AnITE b₂ p₃ c₃ p₄ c₄ q₂}  eq =
-  let h12 = and-true-≃ {x = strip c₁ ==ⁱ strip c₃} {y = strip c₂ ==ⁱ strip c₄} $
-            (and-true-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip c₁ ==ⁱ strip c₃ and strip c₂ ==ⁱ strip c₄} $ eq) .snd in
+length-annos-sameᵇ {c₁ = AnITE b₁ p₁ c₁ p₂ c₂ q₁}  {c₂ = AnITE b₂ p₃ c₃ p₄ c₄ q₂}  eq =
+  let h12 = and-so-≃ {x = strip c₁ ==ⁱ strip c₃} {y = strip c₂ ==ⁱ strip c₄} $
+            (and-so-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip c₁ ==ⁱ strip c₃ and strip c₂ ==ⁱ strip c₄} $ eq) .snd in
   ap suc (  length-to-list {xs = (p₁ ∷₁ annos c₁) ++₁ (p₂ ∷₁ annos c₂)}
           ∙ length₁-++ {xs = p₁ ∷₁ annos c₁} {ys = p₂ ∷₁ annos c₂}
-          ∙ ap² _+_ (ap suc (length-annos-same {c₁ = c₁} (h12 .fst)))
-                    (ap suc (length-annos-same {c₁ = c₂} (h12 .snd)))
+          ∙ ap² _+_ (ap suc (length-annos-sameᵇ {c₁ = c₁} (h12 .fst)))
+                    (ap suc (length-annos-sameᵇ {c₁ = c₂} (h12 .snd)))
           ∙ length₁-++ {xs = p₃ ∷₁ annos c₃} {ys = p₄ ∷₁ annos c₄} ⁻¹
           ∙ length-to-list {xs = (p₃ ∷₁ annos c₃) ++₁ (p₄ ∷₁ annos c₄)} ⁻¹)
-length-annos-same {c₁ = AnWhile inv₁ b₁ p₁ c₁ q₁} {c₂ = AnWhile inv₂ b₂ p₂ c₂ q₂} eq =
-  let h = (and-true-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip c₁ ==ⁱ strip c₂} $ eq) .snd in
+length-annos-sameᵇ {c₁ = AnWhile inv₁ b₁ p₁ c₁ q₁} {c₂ = AnWhile inv₂ b₂ p₂ c₂ q₂} eq =
+  let h = (and-so-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip c₁ ==ⁱ strip c₂} $ eq) .snd in
   ap suc (  length-to-list {xs = inv₁ ∷₁ (q₁ ∷₁ annos c₁)}
-          ∙ ap (2 +_) (length-annos-same {c₁ = c₁} h)
+          ∙ ap (2 +_) (length-annos-sameᵇ {c₁ = c₁} h)
           ∙ length-to-list {xs = inv₂ ∷₁ (q₂ ∷₁ annos c₂)} ⁻¹)
 
-strip-annos-same : ∀ {a b : AnInstr A}
-                 → is-true (strip a ==ⁱ strip b)
+length-annos-same : ∀ {c₁ c₂ : AnInstr A}
+                  → strip c₁ ＝ strip c₂
+                  → length₁ (annos c₁) ＝ length₁ (annos c₂)
+length-annos-same {c₁} {c₂} eq = length-annos-sameᵇ {c₁ = c₁} {c₂ = c₂} (true→so! eq)
+
+strip-annos-sameᵇ : ∀ {a b : AnInstr A}
+                 → ⌞ strip a ==ⁱ strip b ⌟
                  → annos a ＝ annos b
                  → a ＝ b
-strip-annos-same {a = AnSkip p₁}                {b = AnSkip p₂}                eqs eqa = ap AnSkip (∶+-inj eqa .snd)
-strip-annos-same {a = AnAssign x e₁ p₁}         {b = AnAssign y e₂ p₂}         eqs eqa =
-  let h = and-true-≃ {x = ⌊ x ≟ y ⌋} {y = e₁ ==ᵃᵉ e₂} $ eqs in
-    ap² (λ x y → AnAssign x y p₁) (true-reflects discrete-reflects! (h .fst))
-                                  (true-reflects (reflects-aexpr e₁ e₂) (h .snd))
+strip-annos-sameᵇ {a = AnSkip p₁}                {b = AnSkip p₂}                eqs eqa = ap AnSkip (∶+-inj eqa .snd)
+strip-annos-sameᵇ {a = AnAssign x e₁ p₁}         {b = AnAssign y e₂ p₂}         eqs eqa =
+  let h = and-so-≃ {x = ⌊ x ≟ y ⌋} {y = e₁ ==ᵃᵉ e₂} $ eqs in
+    ap² (λ x y → AnAssign x y p₁) (so→true! (h .fst))
+                                  (so→true! ⦃ reflects-aexpr e₁ e₂ ⦄ (h .snd))
   ∙ ap (AnAssign y e₂) (∶+-inj eqa .snd)
-strip-annos-same {a = AnSeq a₁ a₂}              {b = AnSeq b₁ b₂}              eqs eqa =
-  let h = and-true-≃ {x = strip a₁ ==ⁱ strip b₁} {y = strip a₂ ==ⁱ strip b₂} $ eqs
-      h2 = ++₁-same-inj (length-annos-same {c₁ = a₁} (h .fst)) eqa
+strip-annos-sameᵇ {a = AnSeq a₁ a₂}              {b = AnSeq b₁ b₂}              eqs eqa =
+  let h = and-so-≃ {x = strip a₁ ==ⁱ strip b₁} {y = strip a₂ ==ⁱ strip b₂} $ eqs
+      h2 = ++₁-same-inj (length-annos-sameᵇ {c₁ = a₁} (h .fst)) eqa
     in
-  ap² AnSeq (strip-annos-same (h .fst) (h2 .fst)) (strip-annos-same (h .snd) (h2 .snd))
-strip-annos-same {a = AnITE b₁ p₁ a₁ p₂ a₂ q₁}  {b = AnITE b₂ p₃ a₃ p₄ a₄ q₂}  eqs eqa =
-  let h = and-true-≃ {x = b₁ ==ᵇᵉ b₂} {y = (strip a₁ ==ⁱ strip a₃) and (strip a₂ ==ⁱ strip a₄)} $ eqs
-      h2 = and-true-≃ {x = strip a₁ ==ⁱ strip a₃} {y = strip a₂ ==ⁱ strip a₄} $ h .snd
+  ap² AnSeq (strip-annos-sameᵇ (h .fst) (h2 .fst)) (strip-annos-sameᵇ (h .snd) (h2 .snd))
+strip-annos-sameᵇ {a = AnITE b₁ p₁ a₁ p₂ a₂ q₁}  {b = AnITE b₂ p₃ a₃ p₄ a₄ q₂}  eqs eqa =
+  let h = and-so-≃ {x = b₁ ==ᵇᵉ b₂} {y = (strip a₁ ==ⁱ strip a₃) and (strip a₂ ==ⁱ strip a₄)} $ eqs
+      h2 = and-so-≃ {x = strip a₁ ==ⁱ strip a₃} {y = strip a₂ ==ⁱ strip a₄} $ h .snd
       h3 = ∶+-inj eqa
-      h4 = ++₁-same-inj (ap suc (length-annos-same {c₁ = a₁} (h2 .fst))) (to-list-inj (h3 .fst))
+      h4 = ++₁-same-inj (ap suc (length-annos-sameᵇ {c₁ = a₁} (h2 .fst))) (to-list-inj (h3 .fst))
       h5 = ∷₁-inj (h4 .fst)
       h6 = ∷₁-inj (h4 .snd)
     in
-    ap² (λ x y → AnITE x y a₁ p₂ a₂ q₁) (true-reflects (reflects-bexpr b₁ b₂) (h .fst))
+    ap² (λ x y → AnITE x y a₁ p₂ a₂ q₁) (so→true! ⦃ reflects-bexpr b₁ b₂ ⦄ (h .fst))
                                         (h5 .fst)
-  ∙ ap² (λ x y → AnITE b₂ p₃ x y a₂ q₁) (strip-annos-same (h2 .fst) (h5 .snd)) (h6 .fst)
-  ∙ ap² (AnITE b₂ p₃ a₃ p₄) (strip-annos-same (h2 .snd) (h6 .snd)) (h3 .snd)
-strip-annos-same {a = AnWhile inv₁ b₁ p₁ a₁ q₁} {b = AnWhile inv₂ b₂ p₂ a₂ q₂} eqs eqa =
-  let h = and-true-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip a₁ ==ⁱ strip a₂} $ eqs
+  ∙ ap² (λ x y → AnITE b₂ p₃ x y a₂ q₁) (strip-annos-sameᵇ (h2 .fst) (h5 .snd)) (h6 .fst)
+  ∙ ap² (AnITE b₂ p₃ a₃ p₄) (strip-annos-sameᵇ (h2 .snd) (h6 .snd)) (h3 .snd)
+strip-annos-sameᵇ {a = AnWhile inv₁ b₁ p₁ a₁ q₁} {b = AnWhile inv₂ b₂ p₂ a₂ q₂} eqs eqa =
+  let h = and-so-≃ {x = b₁ ==ᵇᵉ b₂} {y = strip a₁ ==ⁱ strip a₂} $ eqs
       h2 = ∶+-inj eqa
       h3 = ∷₁-inj (to-list-inj (h2 .fst))
       h4 = ∷₁-inj (h3 .snd)
     in
-    ap² (λ x y → AnWhile x y p₁ a₁ q₁) (h3 .fst) (true-reflects (reflects-bexpr b₁ b₂) (h .fst))
-  ∙ ap² (λ x y → AnWhile inv₂ b₂ x y q₁) (h4 .fst) (strip-annos-same (h .snd) (h4 .snd))
+    ap² (λ x y → AnWhile x y p₁ a₁ q₁) (h3 .fst) (so→true! ⦃ reflects-bexpr b₁ b₂ ⦄ (h .fst))
+  ∙ ap² (λ x y → AnWhile inv₂ b₂ x y q₁) (h4 .fst) (strip-annos-sameᵇ (h .snd) (h4 .snd))
   ∙ ap (AnWhile inv₂ b₂ p₂ a₂) (h2 .snd)
+
+strip-annos-same : ∀ {a b : AnInstr A}
+                 → strip a ＝ strip b
+                 → annos a ＝ annos b
+                 → a ＝ b
+strip-annos-same {a} {b} eqs = strip-annos-sameᵇ (true→so! eqs)
 
 -- subtype of structurally equal annotated commands
 
 strip-skip : ∀ {c} → strip c ＝ Skip → Σ[ p ꞉ A ] (c ＝ AnSkip p)
 strip-skip {c = AnSkip p}              eq = p , refl
-strip-skip {c = AnAssign x e p}        eq = absurd (Skip≠Assign (eq ⁻¹))
-strip-skip {c = AnSeq c₁ c₂}           eq = absurd (Skip≠Seq (eq ⁻¹))
-strip-skip {c = AnITE b p₁ c₁ p₂ c₂ q} eq = absurd (Skip≠ITE (eq ⁻¹))
-strip-skip {c = AnWhile inv b p c q}   eq = absurd (Skip≠While (eq ⁻¹))
+strip-skip {c = AnAssign x e p}        eq = ⊥.absurd (Skip≠Assign (eq ⁻¹))
+strip-skip {c = AnSeq c₁ c₂}           eq = ⊥.absurd (Skip≠Seq (eq ⁻¹))
+strip-skip {c = AnITE b p₁ c₁ p₂ c₂ q} eq = ⊥.absurd (Skip≠ITE (eq ⁻¹))
+strip-skip {c = AnWhile inv b p c q}   eq = ⊥.absurd (Skip≠While (eq ⁻¹))
 
 strip-assign : ∀ {x e c} → strip c ＝ Assign x e → Σ[ p ꞉ A ] (c ＝ AnAssign x e p)
-strip-assign {c = AnSkip p}              eq = absurd (Skip≠Assign eq)
+strip-assign {c = AnSkip p}              eq = ⊥.absurd (Skip≠Assign eq)
 strip-assign {c = AnAssign x e p}        eq =
   let (eqx , eqe) = Assign-inj eq in
   p , ap² (λ z₁ z₂ → AnAssign z₁ z₂ p) eqx eqe
-strip-assign {c = AnSeq c₁ c₂}           eq = absurd (Assign≠Seq (eq ⁻¹))
-strip-assign {c = AnITE b p₁ c₁ p₂ c₂ q} eq = absurd (Assign≠ITE (eq ⁻¹))
-strip-assign {c = AnWhile inv b p c q}   eq = absurd (Assign≠While (eq ⁻¹))
+strip-assign {c = AnSeq c₁ c₂}           eq = ⊥.absurd (Assign≠Seq (eq ⁻¹))
+strip-assign {c = AnITE b p₁ c₁ p₂ c₂ q} eq = ⊥.absurd (Assign≠ITE (eq ⁻¹))
+strip-assign {c = AnWhile inv b p c q}   eq = ⊥.absurd (Assign≠While (eq ⁻¹))
 
 strip-seq : ∀ {A : 𝒰 ℓ} {c₁ c₂ c}
           → strip c ＝ Seq c₁ c₂
           → Σ[ a₁ ꞉ AnInstr A ] Σ[ a₂ ꞉ AnInstr A ]
                (c ＝ AnSeq a₁ a₂)
              × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂)
-strip-seq {c = AnSkip p}              eq = absurd (Skip≠Seq eq)
-strip-seq {c = AnAssign x e p}        eq = absurd (Assign≠Seq eq)
+strip-seq {c = AnSkip p}              eq = ⊥.absurd (Skip≠Seq eq)
+strip-seq {c = AnAssign x e p}        eq = ⊥.absurd (Assign≠Seq eq)
 strip-seq {c = AnSeq c₁ c₂}           eq =
   let (eq₁ , eq₂) = Seq-inj eq in
   c₁ , c₂ , refl , eq₁ , eq₂
-strip-seq {c = AnITE b p₁ c₁ p₂ c₂ q} eq = absurd (Seq≠ITE (eq ⁻¹))
-strip-seq {c = AnWhile inv b p c q}   eq = absurd (Seq≠While (eq ⁻¹))
+strip-seq {c = AnITE b p₁ c₁ p₂ c₂ q} eq = ⊥.absurd (Seq≠ITE (eq ⁻¹))
+strip-seq {c = AnWhile inv b p c q}   eq = ⊥.absurd (Seq≠While (eq ⁻¹))
 
 strip-ite : ∀ {A : 𝒰 ℓ} {b c₁ c₂ c}
           → strip c ＝ ITE b c₁ c₂
           → Σ[ p₁ ꞉ A ] Σ[ a₁ ꞉ AnInstr A ] Σ[ p₂ ꞉ A ] Σ[ a₂ ꞉ AnInstr A ] Σ[ q ꞉ A ]
                  (c ＝ AnITE b p₁ a₁ p₂ a₂ q)
                × (strip a₁ ＝ c₁) × (strip a₂ ＝ c₂)
-strip-ite {c = AnSkip p}               eq = absurd (Skip≠ITE eq)
-strip-ite {c = AnAssign x e p}         eq = absurd (Assign≠ITE eq)
-strip-ite {c = AnSeq c₁ c₂}            eq = absurd (Seq≠ITE eq)
+strip-ite {c = AnSkip p}               eq = ⊥.absurd (Skip≠ITE eq)
+strip-ite {c = AnAssign x e p}         eq = ⊥.absurd (Assign≠ITE eq)
+strip-ite {c = AnSeq c₁ c₂}            eq = ⊥.absurd (Seq≠ITE eq)
 strip-ite {c = AnITE b₀ p₁ c₁ p₂ c₂ q} eq =
   let (eq₀ , eq₁ , eq₂) = ITE-inj eq in
   p₁ , c₁ , p₂ , c₂ , q , ap (λ z → AnITE z p₁ c₁ p₂ c₂ q) eq₀ , eq₁ , eq₂
-strip-ite {c = AnWhile inv b p c q}    eq = absurd (ITE≠While (eq ⁻¹))
+strip-ite {c = AnWhile inv b p c q}    eq = ⊥.absurd (ITE≠While (eq ⁻¹))
 
 strip-while : ∀ {A : 𝒰 ℓ} {b c₀ c}
             → strip c ＝ While b c₀
             → Σ[ inv ꞉ A ] Σ[ p ꞉ A ] Σ[ a ꞉ AnInstr A ] Σ[ q ꞉ A ]
                  (c ＝ AnWhile inv b p a q) × (strip a ＝ c₀)
-strip-while {c = AnSkip p}               eq = absurd (Skip≠While eq)
-strip-while {c = AnAssign x e p}         eq = absurd (Assign≠While eq)
-strip-while {c = AnSeq c₁ c₂}            eq = absurd (Seq≠While eq)
-strip-while {c = AnITE b₀ p₁ c₁ p₂ c₂ q} eq = absurd (ITE≠While eq)
+strip-while {c = AnSkip p}               eq = ⊥.absurd (Skip≠While eq)
+strip-while {c = AnAssign x e p}         eq = ⊥.absurd (Assign≠While eq)
+strip-while {c = AnSeq c₁ c₂}            eq = ⊥.absurd (Seq≠While eq)
+strip-while {c = AnITE b₀ p₁ c₁ p₂ c₂ q} eq = ⊥.absurd (ITE≠While eq)
 strip-while {c = AnWhile inv b p c q}    eq =
   let (eq₀ , eq₁) = While-inj eq in
   inv , p , c , q , ap (λ z → AnWhile inv z p c q) eq₀ , eq₁

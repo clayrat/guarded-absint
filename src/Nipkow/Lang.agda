@@ -1,9 +1,8 @@
 module Nipkow.Lang where
 
 open import Prelude
-open import Data.Empty
-open import Data.Bool renaming (_==_ to _==ᵇ_ ; ==-reflects to ==ᵇ-reflects)
-open import Data.Nat renaming (_==_ to _==ⁿ_ ; ==-reflects to ==ⁿ-reflects)
+open import Data.Bool
+open import Data.Nat renaming (_==_ to _==ⁿ_)
 open import Data.Nat.Order.Base
 open import Data.Sum
 open import Data.String
@@ -46,7 +45,7 @@ module AExprCode where
   code-aexpr-is-prop (ANum n₁)     (AVar x₂)     = hlevel!
   code-aexpr-is-prop (ANum n₁)     (APlus b₁ b₂) = hlevel!
   code-aexpr-is-prop (AVar x₁)     (ANum n₂)     = hlevel!
-  code-aexpr-is-prop (AVar x₁)     (AVar x₂)     = path-is-of-hlevel 1 (is-discrete→is-set string-is-discrete) x₁ x₂
+  code-aexpr-is-prop (AVar x₁)     (AVar x₂)     = hlevel!
   code-aexpr-is-prop (AVar x₁)     (APlus b₁ b₂) = hlevel!
   code-aexpr-is-prop (APlus a₁ a₂) (ANum n₂)     = hlevel!
   code-aexpr-is-prop (APlus a₁ a₂) (AVar x₂)     = hlevel!
@@ -88,17 +87,17 @@ _==ᵃᵉ_ : AExpr → AExpr → Bool
 _             ==ᵃᵉ _             = false
 
 reflects-aexpr : ∀ a₁ a₂ → Reflects (a₁ ＝ a₂) (a₁ ==ᵃᵉ a₂)
-reflects-aexpr (ANum n)      (ANum m)      = dmapʳ (ap ANum) (_∘ ANum-inj) (==ⁿ-reflects n m)
+reflects-aexpr (ANum n)      (ANum m)      = dmapʳ (ap ANum) (_∘ ANum-inj) Reflects-ℕ-Path
 reflects-aexpr (ANum n)      (AVar y)      = ofⁿ ANum≠AVar
 reflects-aexpr (ANum n)      (APlus a₃ a₄) = ofⁿ ANum≠APlus
 reflects-aexpr (AVar x)      (ANum m)      = ofⁿ (ANum≠AVar ∘ _⁻¹)
-reflects-aexpr (AVar x)      (AVar y)      = dmapʳ (ap AVar) (_∘ AVar-inj) (discrete-reflects! {x = x} {y = y})
+reflects-aexpr (AVar x)      (AVar y)      = dmapʳ (ap AVar) (_∘ AVar-inj) Reflects-String-Path
 reflects-aexpr (AVar x)      (APlus a₃ a₄) = ofⁿ AVar≠APlus
 reflects-aexpr (APlus a₁ a₂) (ANum m)      = ofⁿ (ANum≠APlus ∘ _⁻¹)
 reflects-aexpr (APlus a₁ a₂) (AVar y)      = ofⁿ (AVar≠APlus ∘ _⁻¹)
 reflects-aexpr (APlus a₁ a₂) (APlus a₃ a₄) =
   dmapʳ (λ x → ap² APlus (x .fst) (x .snd)) (_∘ APlus-inj)
-        (reflects-× (reflects-aexpr a₁ a₃) (reflects-aexpr a₂ a₄))
+        (Reflects-× ⦃ rp = reflects-aexpr a₁ a₃ ⦄ ⦃ rq = reflects-aexpr a₂ a₄ ⦄)
 
 open S.State ℕ 0
 
@@ -199,14 +198,14 @@ BAnd≠BLt : ∀ {b₁ b₂ a₁ a₂} → BAnd b₁ b₂ ≠ BLt a₁ a₂
 BAnd≠BLt = BExprCode.encode-bexpr
 
 _==ᵇᵉ_ : BExpr → BExpr → Bool
-(BC c₁)      ==ᵇᵉ (BC c₂)      = c₁ ==ᵇ c₂
+(BC c₁)      ==ᵇᵉ (BC c₂)      = c₁ equals c₂
 (BNot e₁)    ==ᵇᵉ (BNot e₂)    = e₁ ==ᵇᵉ e₂
 (BAnd e₁ e₂) ==ᵇᵉ (BAnd e₃ e₄) = e₁ ==ᵇᵉ e₃ and e₂ ==ᵇᵉ e₄
 (BLt e₁ e₂)  ==ᵇᵉ (BLt e₃ e₄)  = e₁ ==ᵃᵉ e₃ and e₂ ==ᵃᵉ e₄
 _            ==ᵇᵉ _            = false
 
 reflects-bexpr : ∀ b₁ b₂ → Reflects (b₁ ＝ b₂) (b₁ ==ᵇᵉ b₂)
-reflects-bexpr (BC c₁)      (BC c₂)      = dmapʳ (ap BC) (_∘ BC-inj) (==ᵇ-reflects c₁ c₂)
+reflects-bexpr (BC c₁)      (BC c₂)      = dmapʳ (ap BC) (_∘ BC-inj) Reflects-Bool-Path
 reflects-bexpr (BC c₁)      (BNot e₂)    = ofⁿ BC≠BNot
 reflects-bexpr (BC c₁)      (BAnd e₃ e₄) = ofⁿ BC≠BAnd
 reflects-bexpr (BC c₁)      (BLt e₃ e₄)  = ofⁿ BC≠BLt
@@ -218,14 +217,14 @@ reflects-bexpr (BAnd e₁ e₂) (BC c₂)      = ofⁿ (BC≠BAnd ∘ _⁻¹)
 reflects-bexpr (BAnd e₁ e₂) (BNot e₃)    = ofⁿ (BNot≠BAnd ∘ _⁻¹)
 reflects-bexpr (BAnd e₁ e₂) (BAnd e₃ e₄) =
   dmapʳ (λ x → ap² BAnd (x .fst) (x .snd)) (_∘ BAnd-inj)
-        (reflects-× (reflects-bexpr e₁ e₃) (reflects-bexpr e₂ e₄))
+        (Reflects-× ⦃ rp = reflects-bexpr e₁ e₃ ⦄ ⦃ rq = reflects-bexpr e₂ e₄ ⦄)
 reflects-bexpr (BAnd e₁ e₂) (BLt e₃ e₄)  = ofⁿ BAnd≠BLt
 reflects-bexpr (BLt e₁ e₂)  (BC c₂)      = ofⁿ (BC≠BLt ∘ _⁻¹)
 reflects-bexpr (BLt e₁ e₂)  (BNot e₃)    = ofⁿ (BNot≠BLt ∘ _⁻¹)
 reflects-bexpr (BLt e₁ e₂)  (BAnd e₃ e₄) = ofⁿ (BAnd≠BLt ∘ _⁻¹)
 reflects-bexpr (BLt e₁ e₂)  (BLt e₃ e₄)  =
   dmapʳ (λ x → ap² BLt (x .fst) (x .snd)) (_∘ BLt-inj)
-        (reflects-× (reflects-aexpr e₁ e₃) (reflects-aexpr e₂ e₄))
+        (Reflects-× ⦃ rp = reflects-aexpr e₁ e₃ ⦄ ⦃ rq = reflects-aexpr e₂ e₄ ⦄)
 
 bval : State → BExpr → Bool
 bval s (BC c)       = c
@@ -334,7 +333,7 @@ reflects-instr  Skip          (While _ _)    = ofⁿ Skip≠While
 reflects-instr (Assign _ _)    Skip          = ofⁿ (Skip≠Assign ∘ _⁻¹)
 reflects-instr (Assign x e)   (Assign y g)   =
   dmapʳ (λ x → ap² Assign (x .fst) (x .snd)) (_∘ Assign-inj)
-        (reflects-× (discrete-reflects! {x = x} {y = y}) (reflects-aexpr e g))
+        (Reflects-× ⦃ rq = reflects-aexpr e g ⦄)
 reflects-instr (Assign _ _)   (Seq _ _)      = ofⁿ Assign≠Seq
 reflects-instr (Assign _ _)   (ITE _ _ _)    = ofⁿ Assign≠ITE
 reflects-instr (Assign _ _)   (While _ _)    = ofⁿ Assign≠While
@@ -342,7 +341,7 @@ reflects-instr (Seq _ _)       Skip          = ofⁿ (Skip≠Seq ∘ _⁻¹)
 reflects-instr (Seq _ _)      (Assign _ _)   = ofⁿ (Assign≠Seq ∘ _⁻¹)
 reflects-instr (Seq c₁ c₂)    (Seq c₃ c₄)    =
   dmapʳ (λ x → ap² Seq (x .fst) (x .snd)) (_∘ Seq-inj)
-        (reflects-× (reflects-instr c₁ c₃) (reflects-instr c₂ c₄))
+        (Reflects-× ⦃ rp = reflects-instr c₁ c₃ ⦄ ⦃ rq = reflects-instr c₂ c₄ ⦄)
 reflects-instr (Seq _ _)      (ITE _ _ _)    = ofⁿ Seq≠ITE
 reflects-instr (Seq _ _)      (While _ _)    = ofⁿ Seq≠While
 reflects-instr (ITE _ _ _)     Skip          = ofⁿ (Skip≠ITE ∘ _⁻¹)
@@ -350,7 +349,7 @@ reflects-instr (ITE _ _ _)    (Assign _ _)   = ofⁿ (Assign≠ITE ∘ _⁻¹)
 reflects-instr (ITE _ _ _)    (Seq _ _)      = ofⁿ (Seq≠ITE ∘ _⁻¹)
 reflects-instr (ITE b₁ c₁ c₂) (ITE b₂ c₃ c₄) =
   dmapʳ (λ x → ap (λ q → ITE q c₁ c₂) (x .fst) ∙ ap² (ITE b₂) (x .snd .fst) (x .snd .snd)) (_∘ ITE-inj)
-        (reflects-×³ (reflects-bexpr b₁ b₂) (reflects-instr c₁ c₃) (reflects-instr c₂ c₄))
+        (Reflects-× ⦃ rp = reflects-bexpr b₁ b₂ ⦄ ⦃ rq = Reflects-× ⦃ rp = reflects-instr c₁ c₃ ⦄ ⦃ rq = reflects-instr c₂ c₄ ⦄ ⦄)
 reflects-instr (ITE _ _ _)    (While _ _)    = ofⁿ ITE≠While
 reflects-instr (While _ _)     Skip          = ofⁿ (Skip≠While ∘ _⁻¹)
 reflects-instr (While _ _)    (Assign _ _)   = ofⁿ (Assign≠While ∘ _⁻¹)
@@ -358,7 +357,7 @@ reflects-instr (While _ _)    (Seq _ _)      = ofⁿ (Seq≠While ∘ _⁻¹)
 reflects-instr (While _ _)    (ITE _ _ _)    = ofⁿ (ITE≠While ∘ _⁻¹)
 reflects-instr (While b₁ c₁)  (While b₂ c₂)  =
   dmapʳ (λ x → ap² While (x .fst) (x .snd)) (_∘ While-inj)
-        (reflects-× (reflects-bexpr b₁ b₂) (reflects-instr c₁ c₂))
+        (Reflects-× ⦃ rp = reflects-bexpr b₁ b₂ ⦄ ⦃ rq = reflects-instr c₁ c₂ ⦄)
 
 sym-instr : ∀ {c₁ c₂} → c₁ ==ⁱ c₂ ＝ c₂ ==ⁱ c₁
 sym-instr {c₁} {c₂} = reflects-bool-inj (reflects-instr c₁ c₂)

@@ -286,18 +286,16 @@ module AnInstrLeq
   =all→≤ⁱ {c₁} {c₂ = AnSeq c₁₂ c₂₂}               e a =
     let (a₁ , a₂ , e₁ , e₂ , e₃) = strip-seq e
         (le₁ , le₂) = All²₁-split
-                        (length-annos-same {c₁ = a₁}
-                           (reflects-true (reflects-instr (strip a₁) (strip c₁₂)) e₂))
+                        (length-annos-same {c₁ = a₁} e₂)
                         (subst (λ x → All²₁ leq (annos x) (annos c₁₂ ++₁ annos c₂₂)) e₁ a)
       in
     seq-≤ⁱ-intro2 e₁ refl (=all→≤ⁱ e₂ le₁) (=all→≤ⁱ e₃ le₂)
   =all→≤ⁱ {c₁} {c₂ = AnITE b₂ p₁₂ c₁₂ p₂₂ c₂₂ q₂} e a =
     let (p₃ , a₁ , p₄ , a₂ , q , e₀ , e₁ , e₂) = strip-ite e
-        lp₁ = length-annos-same {c₁ = a₁} $ reflects-true (reflects-instr (strip a₁) (strip c₁₂)) e₁
+        lp₁ = length-annos-same {c₁ = a₁} e₁
         le = All²₁-∶+₁-l (  length₁-++ {xs = p₃ ∷₁ annos a₁} {ys = p₄ ∷₁ annos a₂}
                          ∙ ap² (λ x y → suc x + suc y) lp₁
-                               (length-annos-same {c₁ = a₂}
-                                  (reflects-true (reflects-instr (strip a₂) (strip c₂₂)) e₂))
+                               (length-annos-same {c₁ = a₂} e₂)
                          ∙ length₁-++ {xs = p₁₂ ∷₁ annos c₁₂} {ys = p₂₂ ∷₁ annos c₂₂} ⁻¹) $
              subst (λ x → All²₁ leq (annos x) (((p₁₂ ∷₁ annos c₁₂) ++₁ (p₂₂ ∷₁ annos c₂₂)) ∶+₁ q₂)) e₀ a
         (le₁₁ , le₁₂) = All²₁-split (ap suc lp₁) (le .fst)
@@ -307,9 +305,7 @@ module AnInstrLeq
     ite-≤ⁱ-intro2 e₀ refl le₂₁ (=all→≤ⁱ e₁ le₂₂) le₃₁ (=all→≤ⁱ e₂ le₃₂) (le .snd)
   =all→≤ⁱ {c₁} {c₂ = AnWhile inv₂ b₂ p₂ c₂ q₂}    e a =
     let (inv₁ , p₁ , a₁ , q₁ , e₀ , e₁) = strip-while e
-        le = All²₁-∶+₁-l (ap (2 +_)
-                            (length-annos-same {c₁ = a₁}
-                              (reflects-true (reflects-instr (strip a₁) (strip c₂)) e₁))) $
+        le = All²₁-∶+₁-l (ap (2 +_) (length-annos-same {c₁ = a₁} e₁)) $
              subst (λ x → All²₁ leq (annos x) (((inv₂ ∷₁ (p₂ ∷₁ annos c₂)) ∶+₁ q₂))) e₀ a
         (le₁₁ , le₁₂) = All²-∶∶₁-l (le .fst)
         (le₂₁ , le₂₂) = All²-∶∶₁-l le₁₂
@@ -381,5 +377,4 @@ module AnInstrLeqProp
     let (exy , axy) = ≤ⁱ→=all lxy
         (eyx , ayx) = ≤ⁱ→=all lyx
       in
-    strip-annos-same (reflects-true (reflects-instr (strip _) (strip _)) exy)
-                     (all²₁-antisym (λ _ _ → leq-antisym) axy ayx)
+    strip-annos-same exy (all²₁-antisym (λ _ _ → leq-antisym) axy ayx)

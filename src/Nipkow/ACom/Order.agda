@@ -4,7 +4,7 @@ open import Prelude
 open import Data.Empty
 open import Data.Unit
 open import Data.Bool
-open import Data.Nat renaming (_==_ to _==ⁿ_ ; rec to recⁿ ; ==-reflects to ==ⁿ-reflects)
+open import Data.Nat renaming (_==_ to _==ⁿ_ ; rec to recⁿ)
 open import Data.Nat.Order.Base
   renaming ( _≤_ to _≤ⁿ_ ; _<_ to _<ⁿ_
            ; ≤-refl to ≤ⁿ-refl ; ≤-trans to ≤ⁿ-trans ; ≤-antisym to ≤ⁿ-antisym)
@@ -135,24 +135,28 @@ module AnInstrOrd {B : 𝒰}
 
   shl-shr : {f : ℕ → Maybe B} {n : ℕ}
           → shl (unᵐ-β ∘ shr f n) n ＝ unᵐ-β ∘ f
-  shl-shr {f} {n} = fun-ext λ k → ap unᵐ-β (if-true (reflects-true (≤-reflects n (k + n)) ≤-+-l) ∙ ap f (+-cancel-∸-r k n))
+  shl-shr {f} {n} = fun-ext λ k → ap unᵐ-β (  if-true (true→so! ⦃ ≤-reflects ⦄
+                                                                (≤-+-l {m = n} {n = k}))
+                                            ∙ ap f (+-cancel-∸-r k n))
 
   shl-filt-not : {f : ℕ → Maybe B} {p : ℕ → Bool} {n : ℕ}
-                 → (∀ m → n ≤ⁿ m → is-true (not (p m)))
+                 → (∀ m → n ≤ⁿ m → ⌞ not (p m) ⌟)
                  → shl (unᵐ-β ∘ filt f p) n ＝ λ _ → bot
   shl-filt-not {n} h = fun-ext λ k → ap unᵐ-β (if-false (h (k + n) ≤-+-l))
 
   shl-single-at-not : {b : B} {n m : ℕ}
                   → n <ⁿ m
                   → shl (unᵐ-β ∘ single-at b n) m ＝ λ _ → bot
-  shl-single-at-not {n} {m} lt = fun-ext λ k → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects n (k + m))
-                                                                     (contra (λ e → subst (m ≤ⁿ_) (e ⁻¹) ≤-+-l) (<→≱ $ lt))))
+  shl-single-at-not {n} {m} lt =
+    fun-ext λ k → ap unᵐ-β (if-false (false→so! ⦃ Reflects-ℕ-Path ⦄
+                                                (contra (λ e → subst (m ≤ⁿ_) (e ⁻¹) (≤-+-l))
+                                                        (<→≱ $ lt))))
 
   annotate-β : (c : Instr) → (ℕ → Maybe B) → AnInstr Ob
   annotate-β c f = annotate (unᵐ-β ∘ f) c
 
   annotate-β-filt : ∀ {c : Instr} {f : ℕ → Maybe B} {p : ℕ → Bool}
-                  → (∀ n → n <ⁿ asize c → is-true (p n))
+                  → (∀ n → n <ⁿ asize c → ⌞ p n ⌟)
                   → annotate-β c (filt f p) ＝ annotate-β c f
   annotate-β-filt h = annotate-ext λ n lt → ap unᵐ-β (if-true (h n lt))
 
@@ -203,7 +207,7 @@ module AnInstrOrd {B : 𝒰}
                           (ih₁ .least (a₁' , e₁')
                              λ where (bf , le) →
                                          let bf₁ = filt bf (_<? asize c₁)
-                                             p₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)
+                                             p₁ = annotate-β-filt (λ n lt → true→so! ⦃ <-reflects ⦄ lt)
                                            in
                                          subst (_≤ⁱ a₁') p₁
                                            ((seq-≤ⁱ-elim2 refl eq₀' $
@@ -212,7 +216,8 @@ module AnInstrOrd {B : 𝒰}
                                                    (subst (_≤ⁱ a₁) (p₁ ⁻¹) le)
                                                    (subst (λ q → annotate q c₂ ≤ⁱ a₂)
                                                           (shl-filt-not {f = bf} {p = _<? asize c₁} {n = asize c₁}
-                                                             (λ m le → reflects-false (<-reflects m (asize c₁)) (≤≃≯ $ le)) ⁻¹)
+                                                             (λ m le → false→so! ⦃ <-reflects ⦄
+                                                                                 (≤≃≯ $ le)) ⁻¹)
                                                           (annotate-bot e₂))))
                                              .fst))
                           (ih₂ .least (a₂' , e₂')
@@ -226,7 +231,8 @@ module AnInstrOrd {B : 𝒰}
                                               , seq-≤ⁱ-intro2 refl eq₀
                                                   (subst (_≤ⁱ a₁)
                                                          (annotate-ext {c = c₁} {f = λ _ → bot} {g = unᵐ-β ∘ shr bf (asize c₁)}
-                                                              λ n lt → ap unᵐ-β (if-false {b = asize c₁ ≤? n} (reflects-false (≤-reflects (asize c₁) n) (<≃≱ $ lt))) ⁻¹)
+                                                              λ n lt → ap unᵐ-β (if-false {b = asize c₁ ≤? n}
+                                                                                          (false→so! ⦃ ≤-reflects ⦄ (<≃≱ $ lt))) ⁻¹)
                                                          (annotate-bot e₁))
                                                   (subst (λ q → annotate q c₂ ≤ⁱ a₂) (p₂ ⁻¹) le)))
                                             .snd))
@@ -263,7 +269,7 @@ module AnInstrOrd {B : 𝒰}
                           (ih₁ .least (a₁' , e₁')
                               λ where (bf , le) →
                                         let bf₂ = shr (filt bf (_<? asize c₁)) 1
-                                            p₂₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₁)) lt)
+                                            p₂₁ = annotate-β-filt (λ n lt → true→so! ⦃ <-reflects ⦄ lt)
                                             p₂₂ = shl-shr {f = filt bf (_<? asize c₁)} {n = 1}
                                           in
                                         subst (_≤ⁱ a₁') p₂₁ $ subst (λ q → annotate q c₁ ≤ⁱ a₁') p₂₂ $
@@ -272,46 +278,47 @@ module AnInstrOrd {B : 𝒰}
                                            , ite-≤ⁱ-intro2 refl eq₀
                                                 (has-bot p₁)
                                                 (subst (λ q → annotate q c₁ ≤ⁱ a₁) (p₂₂ ⁻¹) $ subst (_≤ⁱ a₁) (p₂₁ ⁻¹) le)
-                                                (subst (λ q → unᵐ-β q ≤ p₂) (if-false (reflects-false (<-reflects (asize c₁) (asize c₁)) <-irr) ⁻¹)
+                                                (subst (λ q → unᵐ-β q ≤ p₂) (if-false (false→so! ⦃ <-reflects {m = asize c₁} ⦄ <-irr) ⁻¹ )
                                                     (has-bot p₂))
                                                 (subst (_≤ⁱ a₂)
-                                                       (annotate-ext λ n lt → ap unᵐ-β (  if-true (reflects-true (<-reflects 0 (n + (2 + asize c₁)))
-                                                                                                                 (<-+-l z<s))
-                                                                                        ∙ if-false (reflects-false (<-reflects (n + (2 + asize c₁) ∸ 1) (asize c₁))
-                                                                                                                   (≤→≯ $ ≤ⁿ-trans (≤ⁿ-trans ≤-ascend ≤-+-l)
-                                                                                                                            (=→≤ (ap (_∸ 1) (+-suc-r n (1 + asize c₁) ⁻¹)))))) ⁻¹)
+                                                       (annotate-ext λ n lt → ap unᵐ-β (  if-true (true→so! ⦃ <-reflects {n = n + (2 + asize c₁)} ⦄
+                                                                                                            (<-+-l z<s))
+                                                                                        ∙ if-false (false→so! ⦃ <-reflects ⦄
+                                                                                                              (≤→≯ $ ≤ⁿ-trans (≤ⁿ-trans ≤-ascend ≤-+-l)
+                                                                                                                              (=→≤ (ap (_∸ 1) (+-suc-r n (1 + asize c₁) ⁻¹)))))) ⁻¹)
                                                        (annotate-bot e₂))
                                                 (subst (λ z → unᵐ-β z ≤ q)
-                                                       (if-false (reflects-false (<-reflects (1 + asize c₁ + asize c₂) (asize c₁))
-                                                                                 (≤→≯ $ ≤-suc-r ≤-+-r)) ⁻¹)
+                                                       (if-false (false→so! ⦃ <-reflects {m = 1 + asize c₁ + asize c₂} {n = asize c₁} ⦄
+                                                                            (≤→≯ $ ≤-suc-r ≤-+-r)) ⁻¹)
                                                        (has-bot q))))
                                          .snd .fst)
                           (↓-is-sup p₂ .least p₂'
                              λ where (b' , le) →
                                         let bf₃ = single-at b' (1 + asize c₁)
-                                            p₃ = ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁) (asize c₁)) refl))
+                                            p₃ = ap unᵐ-β (if-true (true→so! ⦃ Reflects-ℕ-Path {m = asize c₁} ⦄ refl))
                                           in
                                         subst (_≤ p₂') p₃ $
                                         (ite-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₃
                                            , ite-≤ⁱ-intro2 refl eq₀ (has-bot p₁)
                                                (subst (_≤ⁱ a₁)
-                                                      (annotate-ext λ n lt → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects (1 + asize c₁) (n + 1))
-                                                                                                   (contra (λ e → =→≤ (suc-inj (e ∙ +-comm n 1))) (<→≱ $ lt)))) ⁻¹)
+                                                      (annotate-ext λ n lt → ap unᵐ-β (if-false (false→so! ⦃ Reflects-ℕ-Path ⦄
+                                                                                                           (contra (λ e → =→≤ (suc-inj (e ∙ +-comm n 1))) (<→≱ $ lt)))) ⁻¹)
                                                       (annotate-bot e₁))
                                                (subst (_≤ p₂) (p₃ ⁻¹) le)
                                                (subst (λ q → annotate q c₂ ≤ⁱ a₂)
                                                       (shl-single-at-not {n = 1 + asize c₁} {m = 2 + asize c₁} (s<s <-ascend) ⁻¹)
                                                       (annotate-bot e₂))
                                                (subst (λ z → unᵐ-β z ≤ q)
-                                                      (if-false (reflects-false (==ⁿ-reflects (asize c₁) (1 + asize c₁ + asize c₂))
-                                                                                λ p → id≠plus-suc (p ∙ +-suc-r (asize c₁) (asize c₂) ⁻¹)) ⁻¹)
+                                                      (if-false {b = asize c₁ ==ⁿ 1 + asize c₁ + asize c₂}
+                                                                (false→so! ⦃ Reflects-ℕ-Path {m = asize c₁} {n = 1 + asize c₁ + asize c₂} ⦄
+                                                                           λ p → false! ⦃ Reflects-id≠+-suc ⦄ (p ∙ +-suc-r (asize c₁) (asize c₂) ⁻¹)) ⁻¹)
                                                       (has-bot q))))
                                           .snd .snd .fst)
                           (ih₂ .least (a₂' , e₂')
                               λ where (bf , le) →
                                         let bf₄ = shr (filt bf (_<? asize c₂)) (2 + asize c₁)
-                                            p₄₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c₂)) lt)
+                                            p₄₁ = annotate-β-filt (λ n lt → true→so! ⦃ <-reflects ⦄ lt)
                                             p₄₂ = shl-shr {f = filt bf (_<? asize c₂)} {n = 2 + asize c₁}
                                           in
                                         subst (_≤ⁱ a₂') p₄₁ $ subst (λ q → annotate q c₂ ≤ⁱ a₂') p₄₂ $
@@ -320,47 +327,48 @@ module AnInstrOrd {B : 𝒰}
                                            , ite-≤ⁱ-intro2 refl eq₀ (has-bot p₁)
                                                 (subst (_≤ⁱ a₁)
                                                        (annotate-ext λ n lt → ap unᵐ-β (if-false {b = 1 + asize c₁ <? n + 1}
-                                                                                                 (reflects-false (<-reflects (1 + asize c₁) (n + 1))
-                                                                                                                 (≤→≯ $ ≤ⁿ-trans (=→≤ (+-comm n 1)) (s≤s (<→≤ lt))))) ⁻¹)
+                                                                                                 (false→so! ⦃ <-reflects ⦄
+                                                                                                            (≤→≯ $ ≤ⁿ-trans (=→≤ (+-comm n 1)) (s≤s (<→≤ lt))))) ⁻¹)
                                                        (annotate-bot e₁))
                                                 (subst (λ z → unᵐ-β z ≤ p₂)
-                                                       (if-false (reflects-false (<-reflects (asize c₁) (asize c₁)) <-irr) ⁻¹)
+                                                       (if-false (false→so! ⦃ <-reflects {m = asize c₁} ⦄ <-irr) ⁻¹
+                                                                  )
                                                        (has-bot p₂))
                                                 (subst (λ q → annotate q c₂ ≤ⁱ a₂) (p₄₂ ⁻¹) $ subst (_≤ⁱ a₂) (p₄₁ ⁻¹) le)
                                                 (subst (λ z → unᵐ-β z ≤ q)
-                                                       (( if-true (reflects-true (<-reflects (asize c₁) (1 + asize c₁ + asize c₂))
-                                                                                 (<-+-r <-ascend))
-                                                        ∙ if-false (reflects-false (<-reflects (asize c₁ + asize c₂ ∸ asize c₁) (asize c₂))
-                                                                                   (≤→≯ $ =→≤ (  +-cancel-∸-r (asize c₂) (asize c₁) ⁻¹
-                                                                                               ∙ ap (_∸ asize c₁) (+-comm (asize c₂) (asize c₁)))))) ⁻¹)
+                                                       (( if-true ( true→so! ⦃ <-reflects {m = asize c₁} ⦄
+                                                                             (<-+-r <-ascend))
+                                                        ∙ if-false ( false→so! ⦃ <-reflects ⦄
+                                                                               ((≤→≯ $ =→≤ (  +-cancel-∸-r (asize c₂) (asize c₁) ⁻¹
+                                                                                            ∙ ap (_∸ asize c₁) (+-comm (asize c₂) (asize c₁))))))) ⁻¹)
                                                        (has-bot q))))
                                           .snd .snd .snd .fst)
                           (↓-is-sup q .least q'
                              λ where (b' , le) →
                                         let bf₅ = single-at b' (2 + asize c₁ + asize c₂)
-                                            p₅ = ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c₁ + asize c₂) (asize c₁ + asize c₂)) refl))
+                                            p₅ = ap unᵐ-β (if-true (true→so! ⦃ Reflects-ℕ-Path {m = asize c₁ + asize c₂} ⦄ refl))
                                           in
                                         subst (_≤ q') p₅ $
                                         (ite-≤ⁱ-elim2 refl eq₀' $
                                          f ( bf₅
                                            , ite-≤ⁱ-intro2 refl eq₀ (has-bot p₁)
                                                 (subst (_≤ⁱ a₁)
-                                                       (annotate-ext λ n lt → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects (2 + asize c₁ + asize c₂) (n + 1))
-                                                                                                    (contra
-                                                                                                       (λ e → ≤-peel (≤ⁿ-trans (s≤s (≤-suc-r ≤-+-r))
-                                                                                                                        (=→≤ (e ∙ +-comm n 1))))
-                                                                                                       (<→≱ $ lt)))) ⁻¹)
+                                                       (annotate-ext λ n lt → ap unᵐ-β (if-false (false→so! ⦃ Reflects-ℕ-Path ⦄
+                                                                                                            (contra
+                                                                                                               (λ e → ≤-peel (≤ⁿ-trans (s≤s (≤-suc-r ≤-+-r))
+                                                                                                                                       (=→≤ (e ∙ +-comm n 1))))
+                                                                                                               (<→≱ $ lt)))) ⁻¹)
                                                        (annotate-bot e₁))
                                                 (subst (λ z → unᵐ-β z ≤ p₂)
-                                                       (if-false (reflects-false (==ⁿ-reflects (1 + asize c₁ + asize c₂) (asize c₁))
-                                                                                 λ e → id≠plus-suc ((+-suc-r (asize c₁) (asize c₂) ∙ e) ⁻¹)) ⁻¹)
+                                                       (if-false ( false→so! ⦃ Reflects-ℕ-Path ⦄
+                                                                             (λ p → false! ⦃ Reflects-id≠+-suc ⦄ ((+-suc-r (asize c₁) (asize c₂) ∙ p) ⁻¹))) ⁻¹)
                                                        (has-bot p₂))
                                                 (subst (_≤ⁱ a₂)
-                                                       (annotate-ext λ n lt → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects (2 + asize c₁ + asize c₂) (n + (2 + asize c₁)))
-                                                                                                    (contra
-                                                                                                       (λ e → =→≤ (+-cancel-r (asize c₂) n (2 + asize c₁)
-                                                                                                                      (+-comm (asize c₂) (2 + asize c₁) ∙ e)))
-                                                                                                       (<→≱ $ lt)))) ⁻¹)
+                                                       (annotate-ext λ n lt → ap unᵐ-β (if-false (false→so! ⦃ Reflects-ℕ-Path ⦄
+                                                                                                            (contra
+                                                                                                               (λ e → =→≤ (+-cancel-r (asize c₂) n (2 + asize c₁)
+                                                                                                                             (+-comm (asize c₂) (2 + asize c₁) ∙ e)))
+                                                                                                               (<→≱ $ lt)))) ⁻¹)
                                                        (annotate-bot e₂))
                                                 (subst (_≤ q) (p₅ ⁻¹) le)))
                                           .snd .snd .snd .snd)
@@ -406,7 +414,7 @@ module AnInstrOrd {B : 𝒰}
                           (ih .least (a₀' , e₀')
                               λ where (bf , le) →
                                        let bf₃ = shr (filt bf (_<? asize c)) 2
-                                           p₃₁ = annotate-β-filt (λ n lt → reflects-true (<-reflects n (asize c)) lt)
+                                           p₃₁ = annotate-β-filt (λ n lt → true→so! ⦃ <-reflects ⦄ lt)
                                            p₃₂ = shl-shr {f = filt bf (_<? asize c)} {n = 2}
                                          in
                                         subst (_≤ⁱ a₀') p₃₁ $ subst (λ q → annotate q c ≤ⁱ a₀') p₃₂ $
@@ -417,14 +425,14 @@ module AnInstrOrd {B : 𝒰}
                                                (has-bot p₀)
                                                (subst (λ q → annotate q c ≤ⁱ a₀) (p₃₂ ⁻¹) $ subst (_≤ⁱ a₀) (p₃₁ ⁻¹) le)
                                                (subst (λ z → unᵐ-β z ≤ q₀)
-                                                      (if-false (reflects-false (<-reflects (asize c) (asize c)) <-irr) ⁻¹)
+                                                      (if-false (false→so! ⦃ <-reflects {m = asize c} ⦄ <-irr ) ⁻¹)
                                                       (has-bot q₀))
                                            ))
                                         .snd .snd .fst)
                           (↓-is-sup q₀ .least q₀'
                              λ where (b' , le) →
                                        let bf₄ = single-at b' (2 + asize c)
-                                           p₄ = ap unᵐ-β (if-true (reflects-true (==ⁿ-reflects (asize c) (asize c)) refl))
+                                           p₄ = ap unᵐ-β (if-true (true→so! ⦃ Reflects-ℕ-Path {m = asize c} ⦄ refl))
                                          in
                                        subst (_≤ q₀') p₄ $
                                        (while-≤ⁱ-elim2 refl eq₀' $
@@ -433,15 +441,16 @@ module AnInstrOrd {B : 𝒰}
                                               (has-bot inv₀)
                                               (has-bot p₀)
                                               (subst (_≤ⁱ a₀)
-                                                     (annotate-ext λ n lt → ap unᵐ-β (if-false (reflects-false (==ⁿ-reflects (2 + asize c) (n + 2))
-                                                                                                  (contra
-                                                                                                     (λ e → =→≤ (+-inj-r (asize c) n 2 (+-comm (asize c) 2 ∙ e)))
-                                                                                                     (<→≱ $ lt)))) ⁻¹)
+                                                     (annotate-ext λ n lt → ap unᵐ-β (if-false (false→so! ⦃ Reflects-ℕ-Path ⦄
+                                                                                                           (contra
+                                                                                                             (λ e → =→≤ (+-inj-r (asize c) n 2 (+-comm (asize c) 2 ∙ e)))
+                                                                                                             (<→≱ $ lt)))) ⁻¹)
                                                      (annotate-bot e₀))
                                               (subst (_≤ q₀) (p₄ ⁻¹) le)))
                                        .snd .snd .snd)
     }
 
+{-
   anc-bas : ∀ c → is-basis (anc-poset c) (anc-suplat c) (anc-β c)
   anc-bas c = record { ≤-is-small = anc-is-small c ; ↓-is-sup = anc-↓-is-sup c }
 
@@ -455,3 +464,4 @@ module AnInstrOrd {B : 𝒰}
   R = sp .fst .snd .snd
   isp : is-a-small-presentation P L β h (J , Y , R)
   isp = sp .snd
+-}
