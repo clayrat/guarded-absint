@@ -63,7 +63,7 @@ module _ {o ℓ ℓ′} {B : 𝒰 ℓ′}
          where
 
   fstream-at-basis : ∀ n → is-basis P L β → is-basis {B = ℕ → B} P L (λ f → β (f n))
-  fstream-at-basis n = surj-basis ((_$ n) , λ b → ∣ (λ _ → b) , refl ∣₁)
+  fstream-at-basis n = cover-preserves-basis ((_$ n) , λ b → ∣ (λ _ → b) , refl ∣₁)
 
 module _ {o ℓ ℓ′} {B : 𝒰 ℓ′}
          {P : Poset o ℓ}
@@ -72,4 +72,4 @@ module _ {o ℓ ℓ′} {B : 𝒰 ℓ′}
          where
 
   fstream-shl-basis : ∀ k → is-basis {B = ℕ → Maybe B} P L β → is-basis {B = ℕ → Maybe B} P L (λ f → β (shl f k))
-  fstream-shl-basis k = surj-basis ((λ f → shl f k) , λ f → ∣ (shr f k) , shl-shr {n = k} ∣₁)
+  fstream-shl-basis k = cover-preserves-basis ((λ f → shl f k) , λ f → ∣ (shr f k) , shl-shr {n = k} ∣₁)
