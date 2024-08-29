@@ -11,6 +11,7 @@ open import Data.Dec renaming (elim to elimᵈ)
 open import Data.Reflects renaming (dmap to dmapʳ)
 
 open import List1
+open import FStream
 open import Nipkow.Lang
 
 private variable
@@ -116,10 +117,7 @@ AnITE≠AnWhile = lower ∘ AnInstrCode.encode-aninstr
 
 -- annotation ops
 
-shl : (ℕ → A) → ℕ → ℕ → A
-shl f n k = f (k + n)
-
-annotate : (ℕ → A) → Instr → AnInstr A
+annotate : FStream A → Instr → AnInstr A
 annotate f  Skip         = AnSkip (f 0)
 annotate f (Assign x e)  = AnAssign x e (f 0)
 annotate f (Seq c₁ c₂)   = AnSeq (annotate f c₁) (annotate (shl f (asize c₁)) c₂)
@@ -129,7 +127,7 @@ annotate f (ITE b c₁ c₂) = AnITE b
                              (f (2 + asize c₁ + asize c₂))
 annotate f (While b c)   = AnWhile (f 0) b (f 1) (annotate (shl f 2) c) (f (2 + asize c))
 
-annotate-ext : ∀ {c : Instr} {f g : ℕ → A}
+annotate-ext : ∀ {c : Instr} {f g : FStream A}
              → (∀ n → n <ⁿ asize c → f n ＝ g n)
              → annotate f c ＝ annotate g c
 annotate-ext {c = Skip}                h = ap AnSkip (h 0 z<s)
@@ -192,7 +190,7 @@ strip-surj ai (ITE b c₁ c₂) = map (λ a → AnITE {!!} {!!} {!!} {!!} {!!} {
 strip-surj ai (While b c)   = map (λ a → AnWhile {!!} {!!} {!!} {!!} {!!} , {!!}) ai
 -}
 
-strip-annotate : ∀ {f : ℕ → A} {c} → strip (annotate f c) ＝ c
+strip-annotate : ∀ {f : FStream A} {c} → strip (annotate f c) ＝ c
 strip-annotate {c = Skip}        = refl
 strip-annotate {c = Assign x e}  = refl
 strip-annotate {c = Seq c₁ c₂}   = ap² Seq (strip-annotate {c = c₁}) (strip-annotate {c = c₂})
@@ -306,6 +304,9 @@ strip-annos-same {a} {b} eqs = strip-annos-sameᵇ (true→so! eqs)
 
 -- subtype of structurally equal annotated commands
 
+AnStr : 𝒰 ℓ → Instr → 𝒰 ℓ
+AnStr A c = fibre (strip {A = A}) c
+
 strip-skip : ∀ {c} → strip c ＝ Skip → Σ[ p ꞉ A ] (c ＝ AnSkip p)
 strip-skip {c = AnSkip p}              eq = p , refl
 strip-skip {c = AnAssign x e p}        eq = ⊥.absurd (Skip≠Assign (eq ⁻¹))
@@ -359,9 +360,6 @@ strip-while {c = AnITE b₀ p₁ c₁ p₂ c₂ q} eq = ⊥.absurd (ITE≠While 
 strip-while {c = AnWhile inv b p c q}    eq =
   let (eq₀ , eq₁) = While-inj eq in
   inv , p , c , q , ap (λ z → AnWhile inv z p c q) eq₀ , eq₁
-
-AnStr : 𝒰 ℓ → Instr → 𝒰 ℓ
-AnStr A c = fibre (strip {A = A}) c
 
 AnStr-Skip-≃ : {A : 𝒰 ℓ} → AnStr A Skip ≃ A
 AnStr-Skip-≃ {A} = ≅→≃ (to , iso fro ri li)
