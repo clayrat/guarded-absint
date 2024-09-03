@@ -362,31 +362,31 @@ strip-while {c = AnWhile inv b p c q}    eq =
   inv , p , c , q , ap (λ z → AnWhile inv z p c q) eq₀ , eq₁
 
 AnStr-Skip-≃ : {A : 𝒰 ℓ} → AnStr A Skip ≃ A
-AnStr-Skip-≃ {A} = ≅→≃ (to , iso fro ri li)
+AnStr-Skip-≃ {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
   where
   to : AnStr A Skip → A
   to (as , eq) = strip-skip eq .fst
   fro : A → AnStr A Skip
   fro a = AnSkip a , refl
-  ri : fro is-right-inverse-of to
+  ri : fro section-of′ to
   ri a = refl
-  li : fro is-left-inverse-of to
+  li : fro retract-of′ to
   li (as , eq) = Σ-prop-path! (strip-skip eq .snd ⁻¹)
 
 AnStr-Assign-≃ : ∀ {x e} {A : 𝒰 ℓ} → AnStr A (Assign x e) ≃ A
-AnStr-Assign-≃ {x} {e} {A} = ≅→≃ (to , iso fro ri li)
+AnStr-Assign-≃ {x} {e} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
   where
   to : AnStr A (Assign x e) → A
   to (as , eq) = strip-assign eq .fst
   fro : A → AnStr A (Assign x e)
   fro a = AnAssign x e a , refl
-  ri : fro is-right-inverse-of to
+  ri : fro section-of′ to
   ri a = refl
-  li : fro is-left-inverse-of to
+  li : fro retract-of′ to
   li (as , eq) = Σ-prop-path! (strip-assign eq .snd ⁻¹)
 
 AnStr-Seq-≃ : ∀ {c₁ c₂} {A : 𝒰 ℓ} → AnStr A (Seq c₁ c₂) ≃ AnStr A c₁ × AnStr A c₂
-AnStr-Seq-≃ {c₁} {c₂} {A} = ≅→≃ (to , iso fro ri li)
+AnStr-Seq-≃ {c₁} {c₂} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
   where
   to : AnStr A (Seq c₁ c₂) → AnStr A c₁ × AnStr A c₂
   to (as , eq) =
@@ -394,15 +394,15 @@ AnStr-Seq-≃ {c₁} {c₂} {A} = ≅→≃ (to , iso fro ri li)
     (a₁ , e₁) , (a₂ , e₂)
   fro : AnStr A c₁ × AnStr A c₂ → AnStr A (Seq c₁ c₂)
   fro ((a₁ , e₁) , (a₂ , e₂)) = AnSeq a₁ a₂ , ap² Seq e₁ e₂
-  ri : fro is-right-inverse-of to
+  ri : fro section-of′ to
   ri ((a₁ , e₁) , (a₂ , e₂)) = ×-path (Σ-prop-path! refl) (Σ-prop-path! refl)
-  li : fro is-left-inverse-of to
+  li : fro retract-of′ to
   li (as , eq) =
     let (a₁ , a₂ , p , e₁ , e₂) = strip-seq eq in
     Σ-prop-path! (p ⁻¹)
 
 AnStr-ITE-≃ : ∀ {b c₁ c₂} {A : 𝒰 ℓ} → AnStr A (ITE b c₁ c₂) ≃ A × AnStr A c₁ × A × AnStr A c₂ × A
-AnStr-ITE-≃ {b} {c₁} {c₂} {A} = ≅→≃ (to , iso fro ri li)
+AnStr-ITE-≃ {b} {c₁} {c₂} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
   where
   to : AnStr A (ITE b c₁ c₂) → A × AnStr A c₁ × A × AnStr A c₂ × A
   to (as , eq) =
@@ -410,19 +410,19 @@ AnStr-ITE-≃ {b} {c₁} {c₂} {A} = ≅→≃ (to , iso fro ri li)
     p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q
   fro : A × AnStr A c₁ × A × AnStr A c₂ × A → AnStr A (ITE b c₁ c₂)
   fro (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) = AnITE b p₁ a₁ p₂ a₂ q , ap² (ITE b) e₁ e₂
-  ri : fro is-right-inverse-of to
+  ri : fro section-of′ to
   ri (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) =
     ×-path refl $
     ×-path (Σ-prop-path! refl) $
     ×-path refl $
     ×-path (Σ-prop-path! refl) refl
-  li : fro is-left-inverse-of to
+  li : fro retract-of′ to
   li (as , eq) =
     let (p₁ , a₁ , p₂ , a₂ , q , e₀ , e₁ , e₂) = strip-ite eq in
     Σ-prop-path! (e₀ ⁻¹)
 
 AnStr-While-≃ : ∀ {b c} {A : 𝒰 ℓ} → AnStr A (While b c) ≃ A × A × AnStr A c × A
-AnStr-While-≃ {b} {c} {A} = ≅→≃ (to , iso fro ri li)
+AnStr-While-≃ {b} {c} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
   where
   to : AnStr A (While b c) → A × A × AnStr A c × A
   to (as , eq) =
@@ -430,12 +430,12 @@ AnStr-While-≃ {b} {c} {A} = ≅→≃ (to , iso fro ri li)
     inv , p , (a , e) , q
   fro : A × A × AnStr A c × A → AnStr A (While b c)
   fro (inv , p , (a , e) , q) = AnWhile inv b p a q , ap (While b) e
-  ri : fro is-right-inverse-of to
+  ri : fro section-of′ to
   ri (inv , p , (a , e) , q) =
     ×-path refl $
     ×-path refl $
     ×-path (Σ-prop-path! refl) refl
-  li : fro is-left-inverse-of to
+  li : fro retract-of′ to
   li (as , eq) =
     let (inv , p , a , q , e₀ , e) = strip-while eq in
     Σ-prop-path! (e₀ ⁻¹)
