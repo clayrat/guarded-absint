@@ -20,6 +20,7 @@ open import Data.Reflects
 
 open import Combinatorics.Power
 open import Order.Base
+open import Order.Morphism
 open import Order.Diagram.Bottom
 open import Order.Diagram.Lub
 open import Order.Constructions.Product
@@ -68,34 +69,47 @@ module AnInstrOrd {B : 𝒰}
   anc-poset c .Poset.≤-trans               = ≤ⁱ-trans
   anc-poset c .Poset.≤-antisym xy yx       = Σ-prop-path! (≤ⁱ-antisym xy yx)
 
+  Anc-Skip-≅ : P ≅ anc-poset Skip
+  Anc-Skip-≅ = iso-mono-refl→≅ (AnStr-Skip-≅ ⁻¹)
+                  Skip-≤ⁱ skip-≤ⁱ-elim
+
+  Anc-Assign-≅ : ∀ {x e} → P ≅ anc-poset (Assign x e)
+  Anc-Assign-≅ = iso-mono-refl→≅ (AnStr-Assign-≅ ⁻¹)
+                    (Assign-≤ⁱ refl refl) assign-≤ⁱ-elim
+
+  Anc-Seq-≅ : ∀ {c₁ c₂} → anc-poset c₁ × anc-poset c₂ ≅ anc-poset (Seq c₁ c₂)
+  Anc-Seq-≅ = iso-mono-refl→≅ (AnStr-Seq-≅ ⁻¹)
+                 (λ where (le₁ , le₂) → Seq-≤ⁱ le₁ le₂) seq-≤ⁱ-elim
+
+  Anc-ITE-≅ : ∀ {b c₁ c₂} → P × anc-poset c₁ × P × anc-poset c₂ × P ≅ anc-poset (ITE b c₁ c₂)
+  Anc-ITE-≅ = iso-mono-refl→≅ (AnStr-ITE-≅ ⁻¹)
+                 (λ where (le₁ , le₂ , le₃ , le₄ , le₅) → ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅) ite-≤ⁱ-elim
+
+  Anc-While-≅ : ∀ {b c} → P × P × anc-poset c × P ≅ anc-poset (While b c)
+  Anc-While-≅ = iso-mono-refl→≅ (AnStr-While-≅ ⁻¹)
+                   (λ where (le₁ , le₂ , le₃ , le₄) → While-≤ⁱ le₁ refl le₂ le₃ le₄) while-≤ⁱ-elim
+
   anc-lub : ∀ c {I : 𝒰} (F : I → AnStr Ob c)
           → Lub (anc-poset c) F
   anc-lub  Skip             F =
-    ≃→Lub′ (AnStr-Skip-≃ ⁻¹)
-      Skip-≤ⁱ skip-≤ⁱ-elim
+    ≅→Lub⁻ Anc-Skip-≅
       (lubs (λ j → let (a , _) = strip-skip (F j .snd) in a))
   anc-lub (Assign x e)      F =
-    ≃→Lub′ (AnStr-Assign-≃ ⁻¹)
-      (Assign-≤ⁱ refl refl) assign-≤ⁱ-elim
+    ≅→Lub⁻ Anc-Assign-≅
       (lubs (λ j → let (a , _) = strip-assign (F j .snd) in a))
   anc-lub (Seq c₁ c₂)       F =
-    ≃→Lub′ (AnStr-Seq-≃ ⁻¹)
-      (λ where (le₁ , le₂) → Seq-≤ⁱ le₁ le₂) seq-≤ⁱ-elim
+    ≅→Lub⁻ Anc-Seq-≅
       (  anc-lub c₁ (λ j → let (a₁ , _ , _ , e₁ , _) = strip-seq (F j .snd) in a₁ , e₁)
        × anc-lub c₂ (λ j → let (_ , a₂ , _ , _ , e₂) = strip-seq (F j .snd) in a₂ , e₂))
   anc-lub (ITE b c₁ c₂) {I} F =
-    ≃→Lub′ {P = P × anc-poset c₁ × P × anc-poset c₂ × P}
-      (AnStr-ITE-≃ ⁻¹)
-      (λ where (le₁ , le₂ , le₃ , le₄ , le₅) → ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅) ite-≤ⁱ-elim
+    ≅→Lub⁻ Anc-ITE-≅
       (  lubs       (λ j → let (p₁ , _  , _  , _  , _ , _ , _  , _ ) = strip-ite (F j .snd) in p₁)
        × anc-lub c₁ (λ j → let (_  , a₁ , _  , _  , _ , _ , e₁ , _ ) = strip-ite (F j .snd) in a₁ , e₁)
        × lubs       (λ j → let (_  , _  , p₂ , _  , _ , _ , _  , _ ) = strip-ite (F j .snd) in p₂)
        × anc-lub c₂ (λ j → let (_  , _  , _  , a₂ , _ , _ , _  , e₂) = strip-ite (F j .snd) in a₂ , e₂)
        × lubs       (λ j → let (_  , _  , _  , _  , q , _ , _  , _ ) = strip-ite (F j .snd) in q))
   anc-lub (While b c)   {I} F =
-    ≃→Lub′ {P = P × P × anc-poset c × P}
-      (AnStr-While-≃ ⁻¹)
-      (λ where (le₁ , le₂ , le₃ , le₄) → While-≤ⁱ le₁ refl le₂ le₃ le₄) while-≤ⁱ-elim
+    ≅→Lub⁻ Anc-While-≅
       (  lubs      (λ j → let (inv , _ , _ , _ , _  , _) = strip-while (F j .snd) in inv)
        × lubs      (λ j → let (_   , p , _ , _ , _  , _) = strip-while (F j .snd) in p)
        × anc-lub c (λ j → let (_   , _ , a , _ , _  , e) = strip-while (F j .snd) in a , e)
@@ -151,28 +165,80 @@ module AnInstrOrd {B : 𝒰}
 
   anc-bas : ∀ c → is-basis (anc-poset c) (anc-suplat c) (anc-β c)
   anc-bas  Skip         =
-    ≃→is-basis′
-      (AnStr-Skip-≃ ⁻¹)
-      Skip-≤ⁱ skip-≤ⁱ-elim
+    ≅→is-basis⁻ Anc-Skip-≅
       (fstream-at-basis 0 $ maybe-basis h)
   anc-bas (Assign x e)  =
-    ≃→is-basis′
-      (AnStr-Assign-≃ ⁻¹)
-      (Assign-≤ⁱ refl refl) assign-≤ⁱ-elim
+    ≅→is-basis⁻ Anc-Assign-≅
       (fstream-at-basis 0 $ maybe-basis h)
   anc-bas (Seq c₁ c₂)   =
     let ih₁ = anc-bas c₁
         ih₂ = anc-bas c₂
      in
-    ≃→is-basis′
-      {P₁ = anc-poset  c₁ × anc-poset  c₂}
-      {L₁ = anc-suplat c₁ × anc-suplat c₂}
-      (AnStr-Seq-≃ ⁻¹)
-      (λ where (le₁ , le₂) → Seq-≤ⁱ le₁ le₂) seq-≤ⁱ-elim
+    ≅→is-basis⁻ {L₁ = anc-suplat c₁ × anc-suplat c₂} Anc-Seq-≅
       (record {
           ≤-is-small = λ where ((a₁ , e₁) , (a₂ , e₂)) bf → ×-is-of-size (ih₁ .is-basis.≤-is-small (a₁ , e₁) bf)
                                                                          (ih₂ .is-basis.≤-is-small (a₂ , e₂) (shl bf (asize c₁)))
         ; ↓-is-sup = λ where ((a₁ , e₁) , (a₂ , e₂)) →
+{-
+                                let q1 = ih₁ .is-basis.↓-is-sup (a₁ , e₁)
+                                    q2 = (fstream-shl-basis (asize c₁) ih₂) .is-basis.↓-is-sup (a₂ , e₂)
+                                    q1' = subst (λ q → is-lub (anc-poset c₁) (↓ᴮ-inclusion (anc-poset c₁) (anc-suplat c₁)
+                                                                                           (λ f → annotate-β c₁ f , q f)
+                                                                                           (a₁ , e₁))
+                                                                             (a₁ , e₁))
+                                                 (fun-ext λ f → hlevel 1 strip-annotate (InstrCode.decode-instr (InstrCode.encode-instr (strip-annotate))))
+                                                 q1
+                                    q2' = subst (λ q → is-lub (anc-poset c₂) (↓ᴮ-inclusion (anc-poset c₂) (anc-suplat c₂)
+                                                                                           (λ f → annotate (shl (unᵐ-β ∘ f) (asize c₁)) c₂ , q f)
+                                                                                           (a₂ , e₂))
+                                                                             (a₂ , e₂))
+                                                 (fun-ext λ f → hlevel 1 strip-annotate (InstrCode.decode-instr (InstrCode.encode-instr (strip-annotate))))
+                                                 q2
+
+
+                                  in
+                                the
+                                  (is-lub (anc-poset c₁ ×ₚ anc-poset c₂)
+                                          (↓ᴮ-inclusion (anc-poset c₁ ×ₚ anc-poset c₂)
+                                                        (anc-suplat c₁ × anc-suplat c₂)
+                                                        (λ f →
+                                                           (annotate-β c₁ f ,
+                                                            InstrCode.decode-instr (InstrCode.encode-instr (strip-annotate {f = unᵐ-β ∘ f} {c = c₁})))
+                                                           ,
+                                                           annotate-β c₂ (shl f (asize c₁)) ,
+                                                           InstrCode.decode-instr (InstrCode.encode-instr (strip-annotate {f = shl (unᵐ-β ∘ f) (asize c₁)} {c = c₂}))
+                                                           )
+                                                        ((a₁ , e₁) , a₂ , e₂))
+                                          ((a₁ , e₁) , a₂ , e₂))
+                                (×-is-lub-surj
+                                  {I = ↓ᴮ (anc-poset c₁ ×ₚ anc-poset c₂)
+                                          (anc-suplat c₁ × anc-suplat c₂)
+                                        (λ f →
+                                           (annotate-β c₁ f ,
+                                            InstrCode.decode-instr (InstrCode.encode-instr (strip-annotate {f = unᵐ-β ∘ f} {c = c₁})))
+                                           ,
+                                            annotate-β c₂ (shl f (asize c₁)) ,
+                                            InstrCode.decode-instr (InstrCode.encode-instr (strip-annotate {f = shl (unᵐ-β ∘ f) (asize c₁)} {c = c₂})))
+                                        ((a₁ , e₁) , a₂ , e₂)}
+                                  (  (λ where (bf , le₁ , le₂) → bf , le₁)
+                                   , λ where (bf , le₁) → ∣ {!!} , {!!} ∣₁)
+                                  (  {!!}
+                                   , {!!})
+{-
+                                  ( (λ where (bf , le₁ , le₂) → bf , le₁)
+                                  , λ where (bf , le₁) → ∣ ( filt bf (_<? asize c₁)
+                                                           , subst (_≤ⁱ a₁) (annotate-β-filt (λ n → true→so!) ⁻¹) le₁
+                                                           , subst (λ q → annotate q c₂ ≤ⁱ a₂)
+                                                                   (shl-filt-not-β {f = bf} {p = _<? asize c₁} {n = asize c₁}
+                                                                      (λ m le → false→so! (≤≃≯ $ le)) ⁻¹)
+                                                                   (annotate-bot e₂))
+                                                           , {!!} ∣₁)
+                                  ( (λ where (bf , le₁ , le₂) → bf , le₂)
+                                  , λ where (bf , le₂) → ∣ (bf , {!!} , le₂) , {!!} ∣₁)
+                                  -}
+                                  q1'
+                                  q2')
+-}
                                   record {
                                      fam≤lub = λ where (bf , le₁ , le₂) →
                                                              ih₁ .is-basis.↓-is-sup (a₁ , e₁) .fam≤lub (bf , le₁)
@@ -211,11 +277,7 @@ module AnInstrOrd {B : 𝒰}
     let ih₁ = anc-bas c₁
         ih₂ = anc-bas c₂
       in
-    ≃→is-basis′
-      {P₁ = P × anc-poset  c₁ × P × anc-poset  c₂ × P}
-      {L₁ = L × anc-suplat c₁ × L × anc-suplat c₂ × L}
-      (AnStr-ITE-≃ ⁻¹)
-      (λ where (le₁ , le₂ , le₃ , le₄ , le₅) → ITE-≤ⁱ refl le₁ le₂ le₃ le₄ le₅) ite-≤ⁱ-elim
+    ≅→is-basis⁻ {L₁ = L × anc-suplat c₁ × L × anc-suplat c₂ × L} Anc-ITE-≅
       (record {
          ≤-is-small = λ where (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) bf →
                                  ×-is-of-size ((fstream-at-basis 0 $ maybe-basis h) .is-basis.≤-is-small p₁ bf) $
@@ -348,11 +410,7 @@ module AnInstrOrd {B : 𝒰}
        })
   anc-bas (While b c)   =
     let ih = anc-bas c in
-    ≃→is-basis′
-      {P₁ = P × P × anc-poset  c × P}
-      {L₁ = L × L × anc-suplat c × L}
-      (AnStr-While-≃ ⁻¹)
-      (λ where (le₁ , le₂ , le₃ , le₄) → While-≤ⁱ le₁ refl le₂ le₃ le₄) while-≤ⁱ-elim
+    ≅→is-basis⁻ {L₁ = L × L × anc-suplat c × L} Anc-While-≅
       (record {
          ≤-is-small = λ where (inv₀ , p₀ , (a₀ , e₀) , q₀) bf →
                                 ×-is-of-size ((fstream-at-basis 0 $ maybe-basis h) .is-basis.≤-is-small inv₀ bf) $

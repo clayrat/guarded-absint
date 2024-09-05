@@ -361,84 +361,83 @@ strip-while {c = AnWhile inv b p c q}    eq =
   let (eq₀ , eq₁) = While-inj eq in
   inv , p , c , q , ap (λ z → AnWhile inv z p c q) eq₀ , eq₁
 
+-- isomorphisms
+
+AnStr-Skip-≅ : {A : 𝒰 ℓ} → AnStr A Skip ≅ A
+AnStr-Skip-≅ .Iso.to (as , eq) = strip-skip eq .fst
+AnStr-Skip-≅ .Iso.from a = AnSkip a , refl
+AnStr-Skip-≅ .Iso.inverses .Inverses.inv-o = fun-ext λ a → refl
+AnStr-Skip-≅ .Iso.inverses .Inverses.inv-i =
+  fun-ext λ aseq → Σ-prop-path! (strip-skip (aseq .snd) .snd ⁻¹)
+{-
 AnStr-Skip-≃ : {A : 𝒰 ℓ} → AnStr A Skip ≃ A
-AnStr-Skip-≃ {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
-  where
-  to : AnStr A Skip → A
-  to (as , eq) = strip-skip eq .fst
-  fro : A → AnStr A Skip
-  fro a = AnSkip a , refl
-  ri : fro section-of′ to
-  ri a = refl
-  li : fro retract-of′ to
-  li (as , eq) = Σ-prop-path! (strip-skip eq .snd ⁻¹)
+AnStr-Skip-≃ = ≅→≃ AnStr-Skip-≅
+-}
 
+AnStr-Assign-≅ : ∀ {x e} {A : 𝒰 ℓ} → AnStr A (Assign x e) ≅ A
+AnStr-Assign-≅         .Iso.to (as , eq) = strip-assign eq .fst
+AnStr-Assign-≅ {x} {e} .Iso.from a = AnAssign x e a , refl
+AnStr-Assign-≅         .Iso.inverses .Inverses.inv-o = fun-ext λ a → refl
+AnStr-Assign-≅         .Iso.inverses .Inverses.inv-i =
+  fun-ext λ aseq → Σ-prop-path! (strip-assign (aseq .snd) .snd ⁻¹)
+
+{-
 AnStr-Assign-≃ : ∀ {x e} {A : 𝒰 ℓ} → AnStr A (Assign x e) ≃ A
-AnStr-Assign-≃ {x} {e} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
-  where
-  to : AnStr A (Assign x e) → A
-  to (as , eq) = strip-assign eq .fst
-  fro : A → AnStr A (Assign x e)
-  fro a = AnAssign x e a , refl
-  ri : fro section-of′ to
-  ri a = refl
-  li : fro retract-of′ to
-  li (as , eq) = Σ-prop-path! (strip-assign eq .snd ⁻¹)
+AnStr-Assign-≃ = ≅→≃ AnStr-Assign-≅
+-}
 
+AnStr-Seq-≅ : ∀ {c₁ c₂} {A : 𝒰 ℓ} → AnStr A (Seq c₁ c₂) ≅ AnStr A c₁ × AnStr A c₂
+AnStr-Seq-≅ .Iso.to (as , eq) =
+  let (a₁ , a₂ , _ , e₁ , e₂) = strip-seq eq in
+  (a₁ , e₁) , (a₂ , e₂)
+AnStr-Seq-≅ .Iso.from ((a₁ , e₁) , (a₂ , e₂)) =
+  AnSeq a₁ a₂ , ap² Seq e₁ e₂
+AnStr-Seq-≅ .Iso.inverses .Inverses.inv-o =
+  fun-ext λ ae → ×-path (Σ-prop-path! refl) (Σ-prop-path! refl)
+AnStr-Seq-≅ .Iso.inverses .Inverses.inv-i =
+  fun-ext λ aseq → let (a₁ , a₂ , p , e₁ , e₂) = strip-seq (aseq .snd) in
+                   Σ-prop-path! (p ⁻¹)
+
+{-
 AnStr-Seq-≃ : ∀ {c₁ c₂} {A : 𝒰 ℓ} → AnStr A (Seq c₁ c₂) ≃ AnStr A c₁ × AnStr A c₂
-AnStr-Seq-≃ {c₁} {c₂} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
-  where
-  to : AnStr A (Seq c₁ c₂) → AnStr A c₁ × AnStr A c₂
-  to (as , eq) =
-    let (a₁ , a₂ , _ , e₁ , e₂) = strip-seq eq in
-    (a₁ , e₁) , (a₂ , e₂)
-  fro : AnStr A c₁ × AnStr A c₂ → AnStr A (Seq c₁ c₂)
-  fro ((a₁ , e₁) , (a₂ , e₂)) = AnSeq a₁ a₂ , ap² Seq e₁ e₂
-  ri : fro section-of′ to
-  ri ((a₁ , e₁) , (a₂ , e₂)) = ×-path (Σ-prop-path! refl) (Σ-prop-path! refl)
-  li : fro retract-of′ to
-  li (as , eq) =
-    let (a₁ , a₂ , p , e₁ , e₂) = strip-seq eq in
-    Σ-prop-path! (p ⁻¹)
+AnStr-Seq-≃ = ≅→≃ AnStr-Seq-≅
+-}
 
+AnStr-ITE-≅ : ∀ {b c₁ c₂} {A : 𝒰 ℓ} → AnStr A (ITE b c₁ c₂) ≅ A × AnStr A c₁ × A × AnStr A c₂ × A
+AnStr-ITE-≅     .Iso.to (as , eq) =
+  let (p₁ , a₁ , p₂ , a₂ , q , _ , e₁ , e₂) = strip-ite eq in
+  p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q
+AnStr-ITE-≅ {b} .Iso.from (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) =
+  AnITE b p₁ a₁ p₂ a₂ q , ap² (ITE b) e₁ e₂
+AnStr-ITE-≅     .Iso.inverses .Inverses.inv-o =
+  fun-ext λ ae → ×-path refl $ ×-path (Σ-prop-path! refl) $
+                 ×-path refl $ ×-path (Σ-prop-path! refl) refl
+AnStr-ITE-≅     .Iso.inverses .Inverses.inv-i =
+  fun-ext λ aseq → let (p₁ , a₁ , p₂ , a₂ , q , e₀ , e₁ , e₂) = strip-ite (aseq .snd) in
+                   Σ-prop-path! (e₀ ⁻¹)
+
+{-
 AnStr-ITE-≃ : ∀ {b c₁ c₂} {A : 𝒰 ℓ} → AnStr A (ITE b c₁ c₂) ≃ A × AnStr A c₁ × A × AnStr A c₂ × A
-AnStr-ITE-≃ {b} {c₁} {c₂} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
-  where
-  to : AnStr A (ITE b c₁ c₂) → A × AnStr A c₁ × A × AnStr A c₂ × A
-  to (as , eq) =
-    let (p₁ , a₁ , p₂ , a₂ , q , _ , e₁ , e₂) = strip-ite eq in
-    p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q
-  fro : A × AnStr A c₁ × A × AnStr A c₂ × A → AnStr A (ITE b c₁ c₂)
-  fro (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) = AnITE b p₁ a₁ p₂ a₂ q , ap² (ITE b) e₁ e₂
-  ri : fro section-of′ to
-  ri (p₁ , (a₁ , e₁) , p₂ , (a₂ , e₂) , q) =
-    ×-path refl $
-    ×-path (Σ-prop-path! refl) $
-    ×-path refl $
-    ×-path (Σ-prop-path! refl) refl
-  li : fro retract-of′ to
-  li (as , eq) =
-    let (p₁ , a₁ , p₂ , a₂ , q , e₀ , e₁ , e₂) = strip-ite eq in
-    Σ-prop-path! (e₀ ⁻¹)
+AnStr-ITE-≃ = ≅→≃ AnStr-ITE-≅
+-}
 
+AnStr-While-≅ : ∀ {b c} {A : 𝒰 ℓ} → AnStr A (While b c) ≅ A × A × AnStr A c × A
+AnStr-While-≅     .Iso.to (as , eq) =
+  let (inv , p , a , q , _ , e) = strip-while eq in
+  inv , p , (a , e) , q
+AnStr-While-≅ {b} .Iso.from (inv , p , (a , e) , q) =
+  AnWhile inv b p a q , ap (While b) e
+AnStr-While-≅     .Iso.inverses .Inverses.inv-o =
+  fun-ext λ ae → ×-path refl $ ×-path refl $
+                 ×-path (Σ-prop-path! refl) refl
+AnStr-While-≅     .Iso.inverses .Inverses.inv-i =
+  fun-ext λ aseq → let (inv , p , a , q , e₀ , e) = strip-while (aseq .snd) in
+                   Σ-prop-path! (e₀ ⁻¹)
+
+{-
 AnStr-While-≃ : ∀ {b c} {A : 𝒰 ℓ} → AnStr A (While b c) ≃ A × A × AnStr A c × A
-AnStr-While-≃ {b} {c} {A} = ≅→≃ $ iso to fro (fun-ext ri) (fun-ext li)
-  where
-  to : AnStr A (While b c) → A × A × AnStr A c × A
-  to (as , eq) =
-    let (inv , p , a , q , _ , e) = strip-while eq in
-    inv , p , (a , e) , q
-  fro : A × A × AnStr A c × A → AnStr A (While b c)
-  fro (inv , p , (a , e) , q) = AnWhile inv b p a q , ap (While b) e
-  ri : fro section-of′ to
-  ri (inv , p , (a , e) , q) =
-    ×-path refl $
-    ×-path refl $
-    ×-path (Σ-prop-path! refl) refl
-  li : fro retract-of′ to
-  li (as , eq) =
-    let (inv , p , a , q , e₀ , e) = strip-while eq in
-    Σ-prop-path! (e₀ ⁻¹)
+AnStr-While-≃ = ≅→≃ AnStr-While-≅
+-}
 
 {-
 -- case reflection
