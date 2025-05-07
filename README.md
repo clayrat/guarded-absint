@@ -9,3 +9,4 @@ References:
 * https://github.com/coq-community/semantics
 * [Nipkow, [2012] "Abstract Interpretation of Annotated Commands"](https://isabelle.in.tum.de/~nipkow/pubs/itp12.pdf)
 * [Nipkow, Klein, [2023] "Concrete Semantics with Isabelle/HOL" (chapter 13)](http://www.concrete-semantics.org)
+* https://danilafe.com/series/static-program-analysis-in-agda/
