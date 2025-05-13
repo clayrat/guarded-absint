@@ -64,6 +64,8 @@ FMapₚ _ bp .Poset.≤-antisym {x} (xyd , xyf) (yxd , yxf) =
     (fun-ext λ a → (Maybeₚ bp).Poset.≤-antisym (xyf a) (yxf a))
     (set-ext λ z → prop-extₑ! xyd yxd)
 
+-- join
+
 l≤⊔f : ⦃ da : is-discrete A ⦄
      → {bp : Poset ℓᵇ ℓ} → ⦃ hj : Has-joins bp ⦄ → (open JR bp hj)
      → {x y : FMap A (Poset.Ob bp)}
@@ -143,6 +145,120 @@ r≤⊔f {bp} ⦃ hj ⦄ {x} {y} =
   where
     open JR bp hj public renaming (∪-universal to ∪-universal′)
 
+-- meet
+
+⊓f≤l : ⦃ da : is-discrete A ⦄
+     → {bp : Poset ℓᵇ ℓ} → ⦃ hm : Has-meets bp ⦄ → (open MR bp hm)
+     → {x y : FMap A (Poset.Ob bp)}
+     → (FMapₚ A bp).Poset._≤_ (x ⊓[ _∩_ ] y) x
+⊓f≤l {bp} ⦃ hm ⦄ {x} {y} =
+    ∈-∩∷→l
+  , λ a → Maybe.elim
+             (λ q → Maybe≤ (Poset._≤_ bp)
+                           (bindₘ (fromMaybe2 q (y $ a))
+                                  (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b))))
+                           q)
+             (Maybe.elim
+                (λ q → Maybe≤ (Poset._≤_ bp)
+                              (bindₘ (fromMaybe2 nothing q)
+                                     (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b))))
+                              nothing)
+                (lift tt)
+                (λ m → lift tt)
+                (y $ a))
+             (λ n →
+                Maybe.elim
+                (λ q → Maybe≤ (Poset._≤_ bp)
+                              (bindₘ (fromMaybe2 (just n) q)
+                                     (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b))))
+                              (just n))
+                (lift tt)
+                (λ m → ∩≤l′)
+                (y $ a))
+             (x $ a)
+  where
+    open MR bp hm public renaming (∩≤l to ∩≤l′)
+
+⊓f≤r : ⦃ da : is-discrete A ⦄
+     → {bp : Poset ℓᵇ ℓ} → ⦃ hm : Has-meets bp ⦄ → (open MR bp hm)
+     → {x y : FMap A (Poset.Ob bp)}
+     → (FMapₚ A bp).Poset._≤_ (x ⊓[ _∩_ ] y) y
+⊓f≤r {bp} ⦃ hm ⦄ {x} {y} =
+    ∈-∩∷→r
+  , λ a → Maybe.elim
+             (λ q → Maybe≤ (Poset._≤_ bp)
+                           (bindₘ (fromMaybe2 q (y $ a))
+                                  (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b))))
+                           (y $ a))
+             (Maybe.elim
+                (λ q → Maybe≤ (Poset._≤_ bp)
+                              (bindₘ (fromMaybe2 nothing q)
+                                     (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b))))
+                              q)
+                (lift tt)
+                (λ m → lift tt)
+                (y $ a))
+             (λ n →
+                Maybe.elim
+                (λ q → Maybe≤ (Poset._≤_ bp)
+                              (bindₘ (fromMaybe2 (just n) q)
+                                     (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b))))
+                              q)
+                (lift tt)
+                (λ m → ∩≤r′)
+                (y $ a))
+             (x $ a)
+  where
+    open MR bp hm public renaming (∩≤r to ∩≤r′)
+
+≤⊓f : ⦃ da : is-discrete A ⦄
+    → {bp : Poset ℓᵇ ℓ} → ⦃ hm : Has-meets bp ⦄ → (open MR bp hm)
+    → {x y : FMap A (Poset.Ob bp)}
+    → (z : FMap A (Poset.Ob bp))
+    → (FMapₚ A bp).Poset._≤_ z x
+    → (FMapₚ A bp).Poset._≤_ z y
+    → (FMapₚ A bp).Poset._≤_ z (x ⊓[ _∩_ ] y)
+≤⊓f {bp} ⦃ hm ⦄ {x} {y} z (zxd , zxf) (zyd , zyf) =
+    (λ q∈ → ∈-∩∷← (zxd q∈) (zyd q∈))
+  , λ a → Maybe.elim
+             (λ q → Maybe≤ (Poset._≤_ bp)
+                           (z $ a) q
+                  → Maybe≤ (Poset._≤_ bp)
+                           (z $ a)
+                           (bindₘ (fromMaybe2 q (y $ a))
+                                  (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b)))))
+             (λ mx → Maybe.elim
+                       (λ q → Maybe≤ (Poset._≤_ bp)
+                                     (z $ a) q
+                            → Maybe≤ (Poset._≤_ bp)
+                                     (z $ a)
+                                     (bindₘ (fromMaybe2 nothing q)
+                                            (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b)))))
+                       (λ _ → mx)
+                       (λ _ _ → mx)
+                       (y $ a) (zyf a))
+             (λ b₁ mx → Maybe.elim
+                         (λ q → Maybe≤ (Poset._≤_ bp)
+                                       (z $ a) q
+                              → Maybe≤ (Poset._≤_ bp)
+                                       (z $ a)
+                                       (bindₘ (fromMaybe2 (just b₁) q)
+                                              (These.rec (λ _ → nothing) (λ _ → nothing) (λ a b → just (a ∩ b)))))
+                       (λ my → my)
+                       (λ b₂ my → Maybe.elim
+                                     (λ q → Maybe≤ (Poset._≤_ bp) q (just b₁)
+                                          → Maybe≤ (Poset._≤_ bp) q (just b₂)
+                                          → Maybe≤ (Poset._≤_ bp) q (just (b₁ ∩ b₂)))
+                                     (λ _ → id)
+                                     ∩-universal′
+                                     (z $ a) mx my)
+                       (y $ a) (zyf a))
+             (x $ a) (zxf a)
+  where
+    open MR bp hm public renaming (∩-universal to ∩-universal′)
+
+-- instances
+
 instance
   FMap-bottom : ∀ {ℓ ℓᵇ} {A : 𝒰 ℓᵃ} → ⦃ da : is-discrete A ⦄
               → {bp : Poset ℓᵇ ℓ} → Bottom (FMapₚ A bp)
@@ -158,3 +274,27 @@ instance
   FMap-joins {bp} ⦃ hj ⦄ {x} {y} .Join.has-join .is-join.l≤join = l≤⊔f {bp = bp} {x = x} {y = y}
   FMap-joins {bp} ⦃ hj ⦄ {x} {y} .Join.has-join .is-join.r≤join = r≤⊔f {bp = bp} {x = x} {y = y}
   FMap-joins {bp} ⦃ hj ⦄ {x} {y} .Join.has-join .is-join.least = ⊔f≤ {bp = bp} {x = x} {y = y}
+
+  FMap-meets : ∀ {ℓ ℓᵇ} {A : 𝒰 ℓᵃ} → ⦃ da : is-discrete A ⦄
+             → {bp : Poset ℓᵇ ℓ} → ⦃ hm : Has-meets bp ⦄
+             → Has-meets (FMapₚ A bp)
+  FMap-meets {bp} ⦃ hm ⦄ {x} {y} .Meet.glb = x ⊓[ _∩_ ] y
+    where
+      open MR bp hm public
+  FMap-meets {bp} ⦃ (hm) ⦄ {x} {y} .Meet.has-meet .is-meet.meet≤l = ⊓f≤l {bp = bp} {x = x} {y = y}
+  FMap-meets {bp} ⦃ (hm) ⦄ {x} {y} .Meet.has-meet .is-meet.meet≤r = ⊓f≤r {bp = bp} {x = x} {y = y}
+  FMap-meets {bp} ⦃ (hm) ⦄ {x} {y} .Meet.has-meet .is-meet.greatest = ≤⊓f {bp = bp} {x = x} {y = y}
+
+{-
+-- strict
+
+FMap< : ∀ {ℓ} {A : 𝒰 ℓᵃ} {B : 𝒰 ℓᵇ}
+      → (B → B → 𝒰 ℓ)
+      → FMap A B → FMap A B → 𝒰 (ℓᵃ ⊔ ℓᵇ ⊔ ℓ)
+FMap< {A} le f1 f2 = (FMap≤ le f1 f2) × (f1 ≠ f2)
+
+FMap<-wf : ∀ {ℓ} {A : 𝒰 ℓᵃ} {B : 𝒰 ℓᵇ}
+         → {le : B → B → 𝒰 ℓ} → is-wf (λ x y → (le x y) × (x ≠ y))
+         → is-wf (FMap< {A = A} le)
+FMap<-wf wle x = acc λ y y<x → {!!}
+-}
