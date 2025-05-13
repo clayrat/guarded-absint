@@ -1,4 +1,4 @@
-module SPA.FMap.Bounded.Order where
+module SPA.FMapC.Bounded.Order where
 
 open import Prelude
 open import Data.Empty hiding (_≠_)
@@ -34,9 +34,9 @@ open import LFSet.Membership
 open import LFSet.Discrete
 open import LFSet.Order
 
-open import SPA.FMap
-open import SPA.FMap.Bounded
-open import SPA.FMap.Order
+open import SPA.FMapC
+open import SPA.FMapC.Bounded
+open import SPA.FMapC.Order
 
 private variable
   ℓᵃ ℓᵇ ℓ : Level
@@ -68,23 +68,25 @@ instance
   FMapBnd-bottom : ⦃ da : is-discrete A ⦄
                  → Bottom (FMapBndₚ A bp ks)
   FMapBnd-bottom .Bottom.bot = empb
-  FMapBnd-bottom .Bottom.bot-is-bot x = (λ a → lift tt)
+  FMapBnd-bottom .Bottom.bot-is-bot x = false! ⦃ Refl-x∉ₛ[] ⦄ , (λ a → lift tt)
 
   FMapBnd-top : ⦃ da : is-discrete A ⦄
               → ⦃ t : Top bp ⦄
               → Top (FMapBndₚ A bp ks)
-  FMapBnd-top           ⦃ t ⦄ .Top.top            = cnstb (t .Top.top)
-  FMapBnd-top {bp} {ks} ⦃ t ⦄ .Top.top-is-top x a =
-    Maybe.elim
-      (λ q → x # a ＝ q → Maybe≤ (Poset._≤_ bp) q
-                           (if a ∈ₛ? ks then just (t .Top.top) else nothing))
-      (λ _ → lift tt)
-      (λ b e → given-yes (x .bnd (just-dom {f = x .fmap} e))
-                  return (λ q → Maybe≤ (Poset._≤_ bp)
-                                  (just b)
-                                  (if ⌊ q ⌋ then just (t .Top.top) else nothing))
-                  then t .Top.top-is-top b)
-      (x $ a) refl
+  FMapBnd-top           ⦃ t ⦄ .Top.top          = cnstb (t .Top.top)
+  FMapBnd-top {bp} {ks} ⦃ t ⦄ .Top.top-is-top x =
+      (x .bnd)
+    , (λ a → Maybe.elim
+              (λ q → x # a ＝ q → Maybe≤ (Poset._≤_ bp) q
+                                   (if a ∈ₛ? ks then just (t .Top.top) else nothing))
+              (λ _ → lift tt)
+              (λ b e → given-yes (x .bnd (just-dom {f = x .fmap} e))
+                          return (λ q → Maybe≤ (Poset._≤_ bp)
+                                          (just b)
+                                          (if ⌊ q ⌋ then just (t .Top.top) else nothing))
+                          then t .Top.top-is-top b)
+              (x $ a)
+              refl)
 
   FMapBnd-joins : ⦃ da : is-discrete A ⦄
                 → ⦃ hj : Has-joins bp ⦄

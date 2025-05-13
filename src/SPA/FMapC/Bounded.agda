@@ -1,5 +1,5 @@
 {-# OPTIONS --safe #-}
-module SPA.FMap.Bounded where
+module SPA.FMapC.Bounded where
 
 open import Prelude
 open import Foundations.Sigma
@@ -18,7 +18,7 @@ open import LFSet
 open import LFSet.Membership
 open import LFSet.Discrete
 
-open import SPA.FMap
+open import SPA.FMapC
 
 -- cofinitely quantified finite key-bounded maps
 -- (dom overapproximates the actual domain)
@@ -48,22 +48,20 @@ fmapbnd-ext : ⦃ H-Level 2 B ⦄ → {m₁ m₂ : FMapBnd A B ks} → m₁ .fma
 fmapbnd-ext {m₁ = mkfmapbnd f₁ b₁} {m₂ = mkfmapbnd f₂ b₂} ef =
   ap² mkfmapbnd ef (to-pathᴾ ((∀-is-of-hlevel 1 λ x → Π-is-of-hlevel 1 λ x∈ → hlevel 1) _ b₂))
 
-empb : ⦃ H-Level 2 B ⦄
-     → FMapBnd A B ks
+empb : FMapBnd A B ks
 empb .fmap = emp
 empb .bnd = false! ⦃ Refl-x∉ₛ[] ⦄
 
-cnstb : ⦃ da : is-discrete A ⦄ → ⦃ H-Level 2 B ⦄
-      → B → FMapBnd A B ks
+cnstb : ⦃ da : is-discrete A ⦄ → B → FMapBnd A B ks
 cnstb {ks} b .fmap = cnst ks b
 cnstb      b .bnd  = id
 
-_⊔[_]b_ : ⦃ da : is-discrete A ⦄ → ⦃ H-Level 2 B ⦄
+_⊔[_]b_ : ⦃ da : is-discrete A ⦄
         → FMapBnd A B ks → (B → B → B) → FMapBnd A B ks → FMapBnd A B ks
 (f1 ⊔[ g ]b f2) .fmap = f1 .fmap ⊔[ g ] f2 .fmap
 (f1 ⊔[ g ]b f2) .bnd = [ f1 .bnd , f2 .bnd ]ᵤ ∘ ∈ₛ-∪∷→
 
-_⊓[_]b_ : ⦃ da : is-discrete A ⦄ → ⦃ H-Level 2 B ⦄
+_⊓[_]b_ : ⦃ da : is-discrete A ⦄
         → FMapBnd A B ks → (B → B → B) → FMapBnd A B ks → FMapBnd A B ks
 (f1 ⊓[ g ]b f2) .fmap = f1 .fmap ⊓[ g ] f2 .fmap
 (f1 ⊓[ g ]b f2) .bnd = f1 .bnd ∘ fst ∘ ∩∷-∈
